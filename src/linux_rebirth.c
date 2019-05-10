@@ -1,6 +1,7 @@
 #include <ncurses.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #define internal static
 #define global static
@@ -50,7 +51,7 @@ enum
 
   // NOTE(Rami): Remove later?
   pair_count
-};
+} pair_e;
 
 enum
 {
@@ -58,9 +59,9 @@ enum
   color_wood,
   color_metal,
   color_light
-};
+} color_e;
 
-// NOTE(Rami): Possible problem, what if you decrease the window size the the poi32 where
+// NOTE(Rami): Possible problem, what if you decrease the window size the the point where
 // something will be drawn somewhere and that spot won't be updated so the drawed stuff will stay there,
 // we don't want that.
 
@@ -91,7 +92,7 @@ enum
   glyph_metal_spade_no_handle = 's',
   glyph_bunsen_burner = '^',
   glyph_bronze_key = '='
-};
+} glyph_e;
 
 typedef enum
 {
