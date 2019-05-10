@@ -51,7 +51,7 @@ enum
 
   // NOTE(Rami): Remove later?
   pair_count
-} pair_e;
+} color_pair_e;
 
 enum
 {
