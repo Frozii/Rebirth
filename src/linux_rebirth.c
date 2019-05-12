@@ -35,6 +35,13 @@ typedef u32 b32;
 
 enum
 {
+  key_enter = 10,
+  key_arrow_up = KEY_UP,
+  key_arrow_down = KEY_DOWN,
+} key_e;
+
+enum
+{
   black_pair,
   red_pair,
   green_pair,
@@ -48,8 +55,12 @@ enum
   wood_pair,
   metal_pair,
   light_pair,
+  grey_pair,
+  white_on_grey_pair, // NOTE(Rami): Do we need this pair?
 
-  // NOTE(Rami): Remove later?
+  background_grey_pair,
+
+  // NOTE(Rami): Remove later!
   pair_count
 } color_pair_e;
 
@@ -58,14 +69,9 @@ enum
   color_stone = 8,
   color_wood,
   color_metal,
-  color_light
+  color_light,
+  color_grey,
 } color_e;
-
-// NOTE(Rami): Possible problem, what if you decrease the window size the the point where
-// something will be drawn somewhere and that spot won't be updated so the drawed stuff will stay there,
-// we don't want that.
-
-// NOTE(Rami): Look into setting the terminal width to a fixed width, is that possible?
 
 enum
 {
@@ -115,21 +121,20 @@ typedef enum
   item_count
 } item_e;
 
-// NOTE(Rami): Main menu options:
-// Play
-// Controls
-// Exit
-
 typedef enum
 {
   state_main_menu,
   state_play,
+  state_controls,
   state_quit
 } game_state_e;
 
 typedef struct
 {
   game_state_e state;
+
+  i32 menu_option_selected;
+  i32 menu_option_count;
 
   b32 first_door_open;
   b32 first_door_dihydrogen_monoxide_added;
@@ -197,24 +202,108 @@ global u8 room[ROOM_WIDTH][ROOM_HEIGHT];
 global item_t items[ITEM_COUNT];
 global searchable_t searchables[SEARCHABLE_COUNT];
 
-internal i32
-is_valid_input(i32 value)
+internal void
+move_menu_option_selected_up()
 {
-  if(value == 'w' ||
-     value == 'a' ||
-     value == 's' ||
-     value == 'd' ||
+  if((game.menu_option_selected - 1) >= 1)
+  {
+    game.menu_option_selected--;
+  }
+}
 
-     value == 'b' ||
-     value == 'c' ||
+internal void
+move_menu_option_selected_down()
+{
+  if((game.menu_option_selected + 1) <= game.menu_option_count)
+  {
+    game.menu_option_selected++;
+  }
+}
 
-     value == 'p' ||
-     value == 'o' ||
-     value == 'i' ||
-     value == 'u' ||
-     value == 'y' ||
+internal void
+update_main_menu()
+{
+  i32 input = getch();
+  switch(input)
+  {
+    case key_enter:
+    {
+      if(game.menu_option_selected == 1)
+      {
+        game.state = state_play;
+      }
+      else if(game.menu_option_selected == 2)
+      {
+        // NOTE(Rami): Implement
+        // game.state = state_controls;
+      }
+      else
+      {
+        game.state = state_quit;
+      }
+    } break;
 
-     value == 'q')
+    case key_arrow_up: move_menu_option_selected_up(); break;
+    case key_arrow_down: move_menu_option_selected_down(); break;
+    default: break;
+  }
+}
+
+internal void
+render_main_menu()
+{
+  mvprintw(5, 10, " _____  _____  _____  _____  _____  _____  _   _ ");
+  mvprintw(6, 10, "|  _  \\|  ___||  _  \\|_   _||  _  \\|_   _|| | | |");
+  mvprintw(7, 10, "| |_| /| |__  | |_| /  | |  | |_| /  | |  | |_| |");
+  mvprintw(8, 10, "| .  / |  __| |  _  \\  | |  | .  /   | |  |  _  |");
+  mvprintw(9, 10, "| |\\ \\ | |___ | |_| / _| |_ | |\\ \\   | |  | | | |");
+  mvprintw(10, 10, "\\_| \\_|\\____/ \\____/  \\___/ \\_| \\_|  \\_/  \\_| |_/");
+
+  if(game.menu_option_selected == 1)
+  {
+    attron(COLOR_PAIR(cyan_pair));
+    mvprintw(14, 10, "Play");
+    attroff(COLOR_PAIR(cyan_pair));
+
+    mvprintw(15, 10, "Controls");
+    mvprintw(16, 10, "Exit");
+  }
+  else if(game.menu_option_selected == 2)
+  {
+    mvprintw(14, 10, "Play");
+
+    attron(COLOR_PAIR(cyan_pair));
+    mvprintw(15, 10, "Controls");
+    attroff(COLOR_PAIR(cyan_pair));
+
+    mvprintw(16, 10, "Exit");
+  }
+  else
+  {
+    mvprintw(14, 10, "Play");
+    mvprintw(15, 10, "Controls");
+
+    attron(COLOR_PAIR(cyan_pair));
+    mvprintw(16, 10, "Exit");
+    attroff(COLOR_PAIR(cyan_pair));
+  }
+}
+
+internal i32
+is_valid_input(i32 key)
+{
+  if(key == 'w' || key == 'W' ||
+     key == 'a' || key == 'A' ||
+     key == 's' || key == 'S' ||
+     key == 'd' || key == 'D' ||
+     key == 'b' || key == 'B' ||
+     key == 'c' || key == 'C' ||
+     key == 'p' || key == 'P' ||
+     key == 'o' || key == 'O' ||
+     key == 'i' || key == 'I' ||
+     key == 'u' || key == 'U' ||
+     key == 'y' || key == 'Y' ||
+     key == 'q' || key == 'Q')
   {
     return 1;
   }
@@ -631,8 +720,8 @@ render_room()
       }
       else if(room[x][y] == glyph_torch)
       {
-        attron(COLOR_PAIR(light_pair));
-        pair = light_pair;
+        attron(COLOR_PAIR(yellow_pair));
+        pair = yellow_pair;
       }
 
       mvprintw(y, x, c);
@@ -644,9 +733,9 @@ render_room()
 internal void
 render_player()
 {
-  attron(COLOR_PAIR(yellow_pair));
+  attron(COLOR_PAIR(cyan_pair));
   mvprintw(player.y, player.x, "@");
-  attroff(COLOR_PAIR(yellow_pair));
+  attroff(COLOR_PAIR(cyan_pair));
 }
 
 internal i32
@@ -1543,7 +1632,8 @@ update_input()
 
   if(is_valid_input(player.input))
   {
-    if(player.input == 'q')
+    if(player.input == 'q' ||
+       player.input == 'Q')
     {
       game.state = state_quit;
     }
@@ -1682,16 +1772,16 @@ render_inventory()
 
       if(count == player.inventory_item_selected)
       {
-        attron(COLOR_PAIR(blue_pair));
+        attron(COLOR_PAIR(cyan_pair));
         mvprintw(y, x, "%c: %s", 96 + count, player.inventory[i].name);        
-        attroff(COLOR_PAIR(blue_pair));
+        attroff(COLOR_PAIR(cyan_pair));
       }
       else if(count == player.inventory_first_combination_item_num ||
               count == player.inventory_second_combination_item_num)
       {
-        attron(COLOR_PAIR(green_pair));
+        attron(COLOR_PAIR(grey_pair));
         mvprintw(y, x, "%c: %s", 96 + count, player.inventory[i].name);
-        attroff(COLOR_PAIR(green_pair));
+        attroff(COLOR_PAIR(grey_pair));
       }
       else
       {
@@ -1722,14 +1812,10 @@ run_game()
 {
   while(game.state != state_quit)
   {
-    // NOTE(Rami): Continue from here.
     if(game.state == state_main_menu)
     {
-    //   mvprintw(5, 5, "TEXT");
-    //   refresh();
-    //   i32 result = getch();
-    //   result++;
-      game.state = state_play;
+      render_main_menu();
+      update_main_menu();
     }
     else if(game.state == state_play)
     {
@@ -1769,7 +1855,7 @@ init_game()
   initscr();
 
   // NOTE(Rami): Maybe have an enum for the possible error numbers,
-  // then pass that to exit_game() for example so it can pri32 out
+  // then pass that to exit_game() for example so it can print out
   // the correct error after ncurses has been closed.
 
   // NOTE(Rami): Add && to check COLORS is at least the amount of colors we need.
@@ -1780,10 +1866,10 @@ init_game()
   }
 
   start_color();
-  curs_set(0);        // cursor off
-  keypad(stdscr, 0);  // disable F1, F2, arrow keys etc.
+  curs_set(0);        // enable/disable cursor
+  keypad(stdscr, 1);  // enable/disable F1, F2, arrow keys etc.
   noecho();           // getch character will not be printed on screen
-  nodelay(stdscr, 0); // getch will block execution
+  nodelay(stdscr, 0); // will getch block execution
   cbreak();           // getch will return user input immediately
 
   init_color(COLOR_BLACK, 0, 0, 0);
@@ -1794,10 +1880,10 @@ init_game()
   init_color(COLOR_MAGENTA, 1000, 0, 1000);
   init_color(COLOR_CYAN, 0, 1000, 1000);
   init_color(COLOR_WHITE, 1000, 1000, 1000);
-  init_color(color_stone, 545, 630, 545);
+  init_color(color_stone, 545, 640, 545);
   init_color(color_wood, 627, 321, 176);
   init_color(color_metal, 780, 780, 780);
-  init_color(color_light, 1000, 1000, 627);
+  init_color(color_grey, 200, 200, 200);
 
   init_pair(black_pair, COLOR_BLACK, COLOR_BLACK);
   init_pair(red_pair, COLOR_RED, COLOR_BLACK);
@@ -1810,7 +1896,10 @@ init_game()
   init_pair(stone_pair, color_stone, COLOR_BLACK);
   init_pair(wood_pair, color_wood, COLOR_BLACK);
   init_pair(metal_pair, color_metal, COLOR_BLACK);
-  init_pair(light_pair, color_light, COLOR_BLACK);
+  init_pair(grey_pair, color_grey, COLOR_BLACK);
+  init_pair(white_on_grey_pair, COLOR_WHITE, color_grey);
+
+  init_pair(background_grey_pair, color_grey, color_grey);
 
   // Stone
   for(i32 x = 0; x < ROOM_WIDTH; x++)
@@ -1904,6 +1993,10 @@ init_game()
 
   // Chains
   room[2][4] = glyph_chain;
+
+  // Game
+  game.menu_option_selected = 1;
+  game.menu_option_count = 3;
 
   // Player
   strcpy(player.name, "Frozii");
