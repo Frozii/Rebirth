@@ -36,8 +36,8 @@ typedef u32 b32;
 enum
 {
   key_enter = 10,
-  key_arrow_up = KEY_UP,
-  key_arrow_down = KEY_DOWN,
+  key_up_arrow = KEY_UP,
+  key_down_arrow = KEY_DOWN,
 } key_e;
 
 enum
@@ -236,6 +236,7 @@ update_main_menu()
       {
         // NOTE(Rami): Implement
         // game.state = state_controls;
+        game.state = state_quit;
       }
       else
       {
@@ -243,8 +244,8 @@ update_main_menu()
       }
     } break;
 
-    case key_arrow_up: move_menu_option_selected_up(); break;
-    case key_arrow_down: move_menu_option_selected_down(); break;
+    case key_up_arrow: move_menu_option_selected_up(); break;
+    case key_down_arrow: move_menu_option_selected_down(); break;
     default: break;
   }
 }
@@ -1819,15 +1820,13 @@ run_game()
     }
     else if(game.state == state_play)
     {
-      update_input();
-
       render_room();
       render_items();
       render_player();
       render_ui();
       render_inventory();
 
-      refresh();
+      update_input();
     }
   }
 }
@@ -1993,6 +1992,9 @@ init_game()
 
   // Chains
   room[2][4] = glyph_chain;
+
+  // NOTE(Rami): Skip main menu
+  game.state = state_play;
 
   // Game
   game.menu_option_selected = 1;
