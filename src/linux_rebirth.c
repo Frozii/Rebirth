@@ -25,7 +25,7 @@ typedef u32 b32;
 #define ROOM_HEIGHT 10
 
 #define MAX_LENGTH 256
-#define GENERAL_LENGHT 32
+#define GENERAL_LENGTH 32
 
 #define ITEM_COUNT 20
 #define SEARCHABLE_COUNT 11
@@ -56,7 +56,8 @@ enum
   metal_pair,
   light_pair,
   grey_pair,
-  white_on_grey_pair, // NOTE(Rami): Do we need this pair?
+  // NOTE(Rami): Do we need this pair?
+  white_on_grey_pair,
 
   background_grey_pair,
 
@@ -126,8 +127,17 @@ typedef enum
   state_main_menu,
   state_play,
   state_controls,
-  state_quit
+  state_quit,
+  state_victory
 } game_state_e;
+
+enum
+{
+  searchable_invalid,
+  searchable_not_searched,
+  searchable_searched
+} searchable_value_e;
+
 
 typedef struct
 {
@@ -157,7 +167,7 @@ typedef struct
   b32 active;
   b32 in_inventory;
   item_e type;
-  char name[GENERAL_LENGHT];
+  char name[GENERAL_LENGTH];
   i32 id;
   i32 x;
   i32 y;
@@ -166,8 +176,6 @@ typedef struct
 
 typedef struct
 {
-  char name[GENERAL_LENGHT];
-  i32 hp;
   i32 x;
   i32 y;
   i32 turn;
@@ -221,37 +229,7 @@ move_menu_option_selected_down()
 }
 
 internal void
-update_main_menu()
-{
-  i32 input = getch();
-  switch(input)
-  {
-    case key_enter:
-    {
-      if(game.menu_option_selected == 1)
-      {
-        game.state = state_play;
-      }
-      else if(game.menu_option_selected == 2)
-      {
-        // NOTE(Rami): Implement
-        // game.state = state_controls;
-        game.state = state_quit;
-      }
-      else
-      {
-        game.state = state_quit;
-      }
-    } break;
-
-    case key_up_arrow: move_menu_option_selected_up(); break;
-    case key_down_arrow: move_menu_option_selected_down(); break;
-    default: break;
-  }
-}
-
-internal void
-render_main_menu()
+main_menu()
 {
   mvprintw(5, 10, " _____  _____  _____  _____  _____  _____  _   _ ");
   mvprintw(6, 10, "|  _  \\|  ___||  _  \\|_   _||  _  \\|_   _|| | | |");
@@ -267,7 +245,7 @@ render_main_menu()
     attroff(COLOR_PAIR(cyan_pair));
 
     mvprintw(15, 10, "Controls");
-    mvprintw(16, 10, "Exit");
+    mvprintw(16, 10, "Quit");
   }
   else if(game.menu_option_selected == 2)
   {
@@ -277,7 +255,7 @@ render_main_menu()
     mvprintw(15, 10, "Controls");
     attroff(COLOR_PAIR(cyan_pair));
 
-    mvprintw(16, 10, "Exit");
+    mvprintw(16, 10, "Quit");
   }
   else
   {
@@ -285,26 +263,52 @@ render_main_menu()
     mvprintw(15, 10, "Controls");
 
     attron(COLOR_PAIR(cyan_pair));
-    mvprintw(16, 10, "Exit");
+    mvprintw(16, 10, "Quit");
     attroff(COLOR_PAIR(cyan_pair));
+  }
+
+  i32 input = getch();
+  switch(input)
+  {
+    case key_enter:
+    {
+      if(game.menu_option_selected == 1)
+      {
+        clear();
+        game.state = state_play;
+      }
+      else if(game.menu_option_selected == 2)
+      {
+        clear();
+        game.state = state_controls;
+      }
+      else
+      {
+        game.state = state_quit;
+      }
+    } break;
+
+    case key_up_arrow: move_menu_option_selected_up(); break;
+    case key_down_arrow: move_menu_option_selected_down(); break;
+    default: break;
   }
 }
 
 internal i32
 is_valid_input(i32 key)
 {
-  if(key == 'w' || key == 'W' ||
-     key == 'a' || key == 'A' ||
-     key == 's' || key == 'S' ||
-     key == 'd' || key == 'D' ||
-     key == 'b' || key == 'B' ||
-     key == 'c' || key == 'C' ||
-     key == 'p' || key == 'P' ||
-     key == 'o' || key == 'O' ||
-     key == 'i' || key == 'I' ||
-     key == 'u' || key == 'U' ||
-     key == 'y' || key == 'Y' ||
-     key == 'q' || key == 'Q')
+  if(key == 'w' ||
+     key == 'a' ||
+     key == 's' ||
+     key == 'd' ||
+     key == 'b' ||
+     key == 'c' ||
+     key == 'p' ||
+     key == 'o' ||
+     key == 'i' ||
+     key == 'u' ||
+     key == 'y' ||
+     key == 'q')
   {
     return 1;
   }
@@ -350,17 +354,19 @@ get_item_type_for_inventory_position(i32 i)
 internal i32
 is_traversable(i32 x, i32 y)
 {
-  // NOTE(Rami): FOR DEBUGGING
-  return 1;
-
+  #if REBIRTH_SLOW
+  i32 result = 1;
+  #else
+  i32 result = 0;
+  #endif
   if(room[x][y] == glyph_floor ||
      room[x][y] == glyph_stone_door_open ||
      room[x][y] == glyph_wooden_door_open)
   {
-    return 1;
+    result = 1;
   }
 
-  return 0;
+  return result;
 }
 
 internal inline i32
@@ -504,7 +510,7 @@ remove_inventory_item(i32 selected)
       items[i].active = false;
       items[i].in_inventory = false;
       items[i].type = item_none;
-      memset(&items[i].name, 0, GENERAL_LENGHT - 1);
+      memset(&items[i].name, 0, GENERAL_LENGTH - 1);
       items[i].id = 0;
       items[i].x = 0;
       items[i].y = 0;
@@ -525,7 +531,7 @@ remove_inventory_item(i32 selected)
         items[i].active = false;
         items[i].in_inventory = false;
         items[i].type = item_none;
-        memset(&items[i].name, 0, GENERAL_LENGHT - 1);
+        memset(&items[i].name, 0, GENERAL_LENGTH - 1);
         items[i].id = 0;
         items[i].x = 0;
         items[i].y = 0;
@@ -538,7 +544,7 @@ remove_inventory_item(i32 selected)
   player.inventory[selected - 1].active = false;
   player.inventory[selected - 1].in_inventory = false;
   player.inventory[selected - 1].type = item_none;
-  memset(&player.inventory[selected - 1], 0, GENERAL_LENGHT - 1);
+  memset(&player.inventory[selected - 1], 0, GENERAL_LENGTH - 1);
   player.inventory[selected - 1].id = 0;
   player.inventory[selected - 1].x = 0;
   player.inventory[selected - 1].y = 0;
@@ -556,7 +562,7 @@ remove_inventory_item(i32 selected)
         player.inventory[i].active = false;
         player.inventory[i].in_inventory = false;
         player.inventory[i].type = item_none;
-        memset(&player.inventory[i].name, 0, GENERAL_LENGHT - 1);
+        memset(&player.inventory[i].name, 0, GENERAL_LENGTH - 1);
         player.inventory[i].id = 0;
         player.inventory[i].x = 0;
         player.inventory[i].y = 0;
@@ -591,7 +597,7 @@ drop_inventory_item(i32 x, i32 y, i32 selected)
   player.inventory[selected - 1].active = false;
   player.inventory[selected - 1].in_inventory = false;
   player.inventory[selected - 1].type = item_none;
-  memset(&player.inventory[selected - 1].name, 0, GENERAL_LENGHT - 1);
+  memset(&player.inventory[selected - 1].name, 0, GENERAL_LENGTH - 1);
   player.inventory[selected - 1].id = 0;
   player.inventory[selected - 1].x = 0;
   player.inventory[selected - 1].y = 0;
@@ -608,7 +614,7 @@ drop_inventory_item(i32 x, i32 y, i32 selected)
         player.inventory[i].active = false;
         player.inventory[i].in_inventory = false;
         player.inventory[i].type = item_none;
-        memset(&player.inventory[i].name, 0, GENERAL_LENGHT - 1);
+        memset(&player.inventory[i].name, 0, GENERAL_LENGTH - 1);
         player.inventory[i].id = 0;
         player.inventory[i].x = 0;
         player.inventory[i].y = 0;
@@ -742,22 +748,23 @@ render_player()
 internal i32
 is_searchable(i32 x, i32 y)
 {
+  i32 result = searchable_invalid;
   for(i32 i = 0; i < SEARCHABLE_COUNT; i++)
   {
     if(equal_pos(x, y, searchables[i].x, searchables[i].y))
     {
       if(searchables[i].searched)
       {
-        return 2;
+        result = searchable_searched;
       }
       else
       {
-        return 1;
+        result = searchable_not_searched;
       }
     }
   }
 
-  return 0;
+  return result;
 }
 
 internal void
@@ -796,7 +803,7 @@ add_searchable_loot(i32 x, i32 y)
       char *found_loot_names[LOOT_COUNT];
       for(i32 i = 0; i < LOOT_COUNT; i++)
       {
-        found_loot_names[i] = malloc(sizeof(char) * GENERAL_LENGHT);
+        found_loot_names[i] = malloc(sizeof(char) * GENERAL_LENGTH);
         *found_loot_names[i] = glyph_blank;
       }
 
@@ -874,7 +881,7 @@ use_item(i32 x, i32 y)
   {
     if(player.inventory[input - 1].in_inventory)
     {
-      i32 type = get_item_type_for_inventory_position(input);
+      i32 item_type = get_item_type_for_inventory_position(input);
 
       if(room[x][y] == glyph_stone_door ||
          room[x][y] == glyph_stone_door_open)
@@ -889,7 +896,7 @@ use_item(i32 x, i32 y)
             }
             else
             {
-              if(type == item_dihydrogen_monoxide)
+              if(item_type == item_dihydrogen_monoxide)
               {
                 render_message("You pour the dihydrogen monoxide onto the cupric sulfate..\n  There's a reaction, you step back..\n  The spade gets hotter and expands a little.");
                 remove_inventory_item(input);
@@ -904,7 +911,7 @@ use_item(i32 x, i32 y)
           }
           else
           {
-            if(type == item_cupric_sulfate)
+            if(item_type == item_cupric_sulfate)
             {
               render_message("You pour the cupric sulfate onto the flat part of the spade.");
               remove_inventory_item(input);
@@ -918,7 +925,7 @@ use_item(i32 x, i32 y)
         }
         else
         {
-          if(type == item_metal_spade_no_handle)
+          if(item_type == item_metal_spade_no_handle)
           {
             render_message("You push the other end of the spade in the hole..\n  It fits quite nicely.");
             remove_inventory_item(input);
@@ -934,9 +941,9 @@ use_item(i32 x, i32 y)
       {
         if(game.second_door_key_imprint_made)
         {
-          if(type == item_tin)
+          if(item_type == item_tin)
           {
-            render_message("You already made an impri32 of the key.");
+            render_message("You already made an imprint of the key.");
           }
           else
           {
@@ -945,7 +952,7 @@ use_item(i32 x, i32 y)
         }
         else
         {
-          if(type == item_tin &&
+          if(item_type == item_tin &&
              game.second_door_dihydrogen_monoxide_added &&
              game.second_door_gypsum_added)
           {
@@ -966,7 +973,7 @@ use_item(i32 x, i32 y)
         }
         else
         {
-          if(type == item_bronze_key && game.second_door_key_pried)
+          if(item_type == item_bronze_key && game.second_door_key_pried)
           {
             render_message("You insert the duplicate key and twist it..\n  You hear a loud click and the door is unlocked.");
             remove_inventory_item(input);
@@ -977,6 +984,10 @@ use_item(i32 x, i32 y)
             render_message("Nothing interesting happens.");
           }
         }
+      }
+      else if(room[x][y] == glyph_wooden_door_open)
+      {
+        render_message("Nothing interesting happens.");
       }
     }
     else
@@ -994,12 +1005,12 @@ internal void
 interact(i32 x, i32 y)
 {
   i32 result = is_searchable(x, y);
-  if(result == 1)
+  if(result == searchable_not_searched)
   {
     add_searchable_loot(x, y);
     return;
   }
-  else if(result == 2)
+  else if(result == searchable_searched)
   {
     switch(room[x][y])
     {
@@ -1095,25 +1106,29 @@ inspect(i32 x, i32 y)
           case glyph_bronze_key: render_message("A bronze key, still a little warm."); break;
           case glyph_tin:
           {
-            if(game.second_door_key_complete)
+            if(game.second_door_key_complete && !game.second_door_key_pried)
             {
               render_message("A round container made out of tin..\n  There's a bronze key in the imprint.");
             }
+            else if(game.second_door_key_complete && game.second_door_key_pried)
+            {
+              render_message("A round container made out of tin..\n  The bronze key that was in it has been pried away.");
+            }
             else if(game.second_door_cupric_ore_powder_added && game.second_door_tin_ore_powder_added)
             {
-              render_message("A round container made out of tin..\n  The key impri32 has cupric and tin ore powder in it.");
+              render_message("A round container made out of tin..\n  The key imprint has cupric and tin ore powder in it.");
             }
             else if(game.second_door_cupric_ore_powder_added)
             {
-              render_message("A round container made out of tin..\n  The key impri32 has cupric ore powder in it.");
+              render_message("A round container made out of tin..\n  The key imprint has cupric ore powder in it.");
             }
             else if(game.second_door_tin_ore_powder_added)
             {
-              render_message("A round container made out of tin..\n  The key impri32 has tin ore powder in it.");
+              render_message("A round container made out of tin..\n  The key imprint has tin ore powder in it.");
             }
             else if(game.second_door_key_imprint_made)
             {
-              render_message("A round container made out of tin..\n  It's filled with a lumpy white mixture that has an impri32 of a key.");
+              render_message("A round container made out of tin..\n  It's filled with a lumpy white mixture that has an imprint of a key.");
             }
             else if(game.second_door_gypsum_added && game.second_door_dihydrogen_monoxide_added)
             {
@@ -1129,7 +1144,7 @@ inspect(i32 x, i32 y)
             }
             else
             {
-              render_message("A round container made out of tin."); break;
+              render_message("A round container made out of tin.\n  I could probably pour something into this.");
             }
           } break;
           case glyph_vial:
@@ -1238,8 +1253,8 @@ reset_inventory_selections()
 internal void
 combine(item_e first_type, item_e second_type)
 {
-  char first_name[GENERAL_LENGHT];
-  char second_name[GENERAL_LENGHT];
+  char first_name[GENERAL_LENGTH];
+  char second_name[GENERAL_LENGTH];
 
   get_item_name_for_item_type(first_name, first_type);
   get_item_name_for_item_type(second_name, second_type);
@@ -1259,10 +1274,10 @@ combine(item_e first_type, item_e second_type)
     }
 
     // Add item to game, make sure to mark it as not active and in the inventory
-    // since it will be added to the inventory by default.
+    // since it will be added to the inventory by default
     i32 item_id = add_item(0, 0, item_metal_spade_no_handle);
 
-    // Add item to inventory.
+    // Add item to inventory
     i32 index = get_item_pos_for_id(item_id);
     items[index].active = false;
     items[index].in_inventory = true;
@@ -1387,10 +1402,10 @@ combine(item_e first_type, item_e second_type)
       render_message("You pry the duplicate bronze key out of the tin.");
 
       // Add item to game, make sure to mark it as not active and in the inventory
-      // since it will be added to the inventory by default.
+      // since it will be added to the inventory by default
       i32 item_id = add_item(0, 0, item_bronze_key);
 
-      // Add item to inventory.
+      // Add item to inventory
       i32 index = get_item_pos_for_id(item_id);
       items[index].active = false;
       items[index].in_inventory = true;
@@ -1409,6 +1424,18 @@ combine(item_e first_type, item_e second_type)
   }
 
   reset_inventory_selections();
+}
+
+internal i32
+is_victorious()
+{
+  i32 result = 0;
+  if(player.x == 23 && player.y == 4)
+  {
+    result = 1;
+  }
+
+  return result;
 }
 
 internal void
@@ -1587,7 +1614,7 @@ player_keypress(i32 key)
       if(player.inventory_item_count)
       {
         render_message("Where do you want to use the item?");
-        player.using_an_item = 1;
+        player.using_an_item = true;
       }
       else
       {
@@ -1611,8 +1638,15 @@ player_keypress(i32 key)
     }
     else if(key == 'b')
     {
-      player.inventory_enabled = true;
-      player.inventory_item_selected = 1;
+      if(player.inventory_item_count)
+      {
+        player.inventory_enabled = true;
+        player.inventory_item_selected = 1;
+      }
+      else
+      {
+        render_message("Your inventory is empty.");
+      }
     }
 
     if(is_traversable(player_new_x, player_new_y))
@@ -1622,6 +1656,12 @@ player_keypress(i32 key)
     }
 
     player.turn++;
+  }
+
+  if(is_victorious())
+  {
+    clear();
+    game.state = state_victory;
   }
 }
 
@@ -1633,8 +1673,7 @@ update_input()
 
   if(is_valid_input(player.input))
   {
-    if(player.input == 'q' ||
-       player.input == 'Q')
+    if(player.input == 'q')
     {
       game.state = state_quit;
     }
@@ -1648,12 +1687,11 @@ update_input()
 internal void
 render_ui()
 {
-  mvprintw(10, 0, "%s", player.name);
-  // NOTE(Rami): Add things that affect HP later
-  mvprintw(12, 0, "HP: %d", player.hp);
-  mvprintw(13, 0, "Turn: %d", player.turn);
+  mvprintw(11, 0, "Turn: %d", player.turn);
 
-  #if REBIRTH_SLOW
+  mvprintw(12, 0, "x: %d", player.x);
+  mvprintw(13, 0, "y: %d", player.y);
+
   i32 x = 135;
   i32 y = 1;
   i32 num = 0;
@@ -1724,7 +1762,6 @@ render_ui()
   mvprintw(11, 86, "second_door_key_imprint_made: %d", game.second_door_key_imprint_made);
   mvprintw(12, 86, "second_door_gypsum_added: %d", game.second_door_gypsum_added);
   mvprintw(13, 86, "second_door_dihydrogen_monoxide_added: %d", game.second_door_dihydrogen_monoxide_added);
-  #endif
 }
 
 internal void
@@ -1809,14 +1846,61 @@ render_inventory()
 }
 
 internal void
+controls()
+{
+  mvprintw(5, 10, " _____   _____   _   _   _____   _____   _____   _      ______");
+  mvprintw(6, 10, "/  __ \\ /  _  \\ / \\ / \\ /_   _\\ /  _  \\ /  _  \\ / |    /  ____\\");
+  mvprintw(7, 10, "| /  \\/ | | | | |  \\| |   | |   | |_| / | | | | | |    | |____");
+  mvprintw(8, 10, "| |     | | | | | . ` |   | |   |    /  | | | | | |    \\____  \\");
+  mvprintw(9, 10, "| \\__/\\ | |_| | | |\\  |   | |   | |\\ \\  | |_| | | |___ _____| |");
+  mvprintw(10, 10, "\\_____/ \\_____/ \\_/ \\_/   \\_/   \\_/ \\_/ \\_____/ \\____/ \\______/");
+
+  mvprintw(14, 10, "w: Move up");
+  mvprintw(15, 10, "s: Move down");
+  mvprintw(16, 10, "a: Move left");
+  mvprintw(17, 10, "d: Move right");
+
+  mvprintw(19, 10, "p: Pickup item");
+  mvprintw(20, 10, "o: Inspect");
+  mvprintw(21, 10, "i: Interact");
+  mvprintw(22, 10, "u: Use item");
+
+  mvprintw(24, 10, "b: Toggle inventory");
+  mvprintw(25, 10, "c: Choose two inventory items to be combined");
+
+  mvprintw(27, 10, "q: Quit game");
+
+
+
+  i32 input = getch();
+  if(input == key_enter)
+  {
+    clear();
+    game.state = state_main_menu;
+  }
+}
+
+internal void
+victory()
+{
+  // NOTE(Rami):
+  mvprintw(5, 10, "Victory");
+
+  i32 input = getch();
+  if(input == key_enter)
+  {
+    game.state = state_quit;
+  }
+}
+
+internal void
 run_game()
 {
   while(game.state != state_quit)
   {
     if(game.state == state_main_menu)
     {
-      render_main_menu();
-      update_main_menu();
+      main_menu();
     }
     else if(game.state == state_play)
     {
@@ -1827,6 +1911,14 @@ run_game()
       render_inventory();
 
       update_input();
+    }
+    else if(game.state == state_controls)
+    {
+      controls();
+    }
+    else if(game.state == state_victory)
+    {
+      victory();
     }
   }
 }
@@ -1993,16 +2085,11 @@ init_game()
   // Chains
   room[2][4] = glyph_chain;
 
-  // NOTE(Rami): Skip main menu
-  game.state = state_play;
-
   // Game
   game.menu_option_selected = 1;
   game.menu_option_count = 3;
 
   // Player
-  strcpy(player.name, "Frozii");
-  player.hp = 10;
   player.x = 3;
   player.y = 6;
 
