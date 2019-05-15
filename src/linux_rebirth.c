@@ -38,6 +38,7 @@ enum
   key_enter = 10,
   key_up_arrow = KEY_UP,
   key_down_arrow = KEY_DOWN,
+  key_s = 115,
 } key_e;
 
 enum
@@ -125,10 +126,11 @@ typedef enum
 typedef enum
 {
   state_main_menu,
+  state_intro,
   state_play,
   state_controls,
   state_quit,
-  state_victory
+  state_outro
 } game_state_e;
 
 enum
@@ -275,7 +277,7 @@ main_menu()
       if(game.menu_option_selected == 1)
       {
         clear();
-        game.state = state_play;
+        game.state = state_intro;
       }
       else if(game.menu_option_selected == 2)
       {
@@ -1427,7 +1429,7 @@ combine(item_e first_type, item_e second_type)
 }
 
 internal i32
-is_victorious()
+did_escape()
 {
   i32 result = 0;
   if(player.x == 23 && player.y == 4)
@@ -1658,10 +1660,10 @@ player_keypress(i32 key)
     player.turn++;
   }
 
-  if(is_victorious())
+  if(did_escape())
   {
     clear();
-    game.state = state_victory;
+    game.state = state_outro;
   }
 }
 
@@ -1870,7 +1872,7 @@ controls()
 
   mvprintw(27, 10, "q: Quit game");
 
-
+  mvprintw(38, 10, "[Enter] Return");
 
   i32 input = getch();
   if(input == key_enter)
@@ -1881,16 +1883,119 @@ controls()
 }
 
 internal void
-victory()
+intro()
 {
-  // NOTE(Rami):
-  mvprintw(5, 10, "Victory");
-
-  i32 input = getch();
-  if(input == key_enter)
+  i32 paragraphs = 0;
+  while(paragraphs < 3)
   {
-    game.state = state_quit;
+    mvprintw(2, 10, "Eyes are Open");
+    mvprintw(3, 10, "_____________");
+
+    if(paragraphs == 1)
+    {
+      mvprintw(5, 10, "You awake, eyes wide open staring infont of you, not sure if in a");
+      mvprintw(6, 10, "dream or not. After glancing around you realise you're on the floor of");
+      mvprintw(7, 10, "some room. You try to reminisce why you are here or who you are but");
+      mvprintw(8, 10, "nothing comes to mind. It's almost like your brain doesn't allow you");
+      mvprintw(9, 10, "to remember.");
+    }
+
+    if(paragraphs == 2)
+    {
+      mvprintw(11, 10, "You seem to be wearing some slightly tattered and worn clotches. There");
+      mvprintw(12, 10, "doesn't to be anything valuable on you at the moment either. At least");
+      mvprintw(13, 10, "you are feeling well-rested for now.");
+    }
+
+    mvprintw(38, 10, "[Enter] Continue    [S] Skip");
+
+    i32 input = getch();
+    if(input == key_enter)
+    {
+      paragraphs++;
+    }
+    else if(input == key_s)
+    {
+      break;
+    }
   }
+
+  clear();
+  game.state = state_play;
+}
+
+internal void
+outro()
+{
+  i32 paragraphs = 0;
+  while(paragraphs < 6)
+  {
+    mvprintw(2, 10, "Black and White");
+    mvprintw(3, 10, "_______________");
+
+    if(paragraphs == 1)
+    {
+      mvprintw(5, 10, "You open the door and see.. nothing but a pitch blackness before you.");
+      mvprintw(6, 10, "You grab hold of one of the torches in the room and try to use it to\n");
+      mvprintw(7, 10, "light your way out. Finally, you can make out the start of a wide cor-");
+      mvprintw(8, 10, "ridor. You start walking in the center of it..");
+    }
+
+    if(paragraphs == 2)
+    {
+      mvprintw(10, 10, "As you walk, the surrounding darkness and silence starts to feel more");
+      mvprintw(11, 10, "and more overwhelming. All you can hear is the sound of your footsteps");
+      mvprintw(12, 10, "which by now seem louder than the blaze of the torch. You squint your");
+      mvprintw(13, 10, "eyes.. and manage to make out a shape.");
+    }
+
+    if(paragraphs == 3)
+    {
+      mvprintw(15, 10, "The shape gradually becomes more visible and a man is revealed.");
+      mvprintw(16, 10, "Caucasian and quite tall in stature, his face almost hidden by a hood");
+      mvprintw(17, 10, "and a mask both of which are white. You can see two bangs protruding");
+      mvprintw(18, 10, "from the hood one on either side in the shape of fangs. Donning a robe");
+      mvprintw(19, 10, "that's black but has white accents on it and short sleeves. His hands");
+      mvprintw(20, 10, "are mostly wrapped and a huge sword can be seen on his back which is");
+      mvprintw(21, 10, "held in place by a strap that spans across his chest in the shape of");
+      mvprintw(22, 10, "an x.");
+    }
+
+    if(paragraphs == 4)
+    {
+      mvprintw(24, 10, "You quickly think about why this person is out here in the darkness ju-");
+      mvprintw(25, 10, "st standing around quietly, as if waiting for something. The person");
+      mvprintw(26, 10, "raises his head and opens his eyes which meet directly with yours. You");
+      mvprintw(27, 10, "decide to open your mouth to ask the person who he is and why you are");
+      mvprintw(28, 10, "here but to your surprise nothing comes out.");
+    }
+
+    if(paragraphs == 5)
+    {
+      mvprintw(30, 10, "You attempt to move but you can't do that either, you feel paralyzed,");
+      mvprintw(31, 10, "by fear. The only thing you can sense is an immense feeling from the");
+      mvprintw(32, 10, "person in front of you. Just him standing there feels like he's burn-");
+      mvprintw(33, 10, "ing the air around him. Is he a monster? Before you can react, he's");
+      mvprintw(34, 10, "somehow in front of you. He slowly puts his hand in front of your face.");
+      mvprintw(35, 10, "His voice clearly reaches you and you hear him say \"Looks like you made");
+      mvprintw(36, 10, "it\". Suddenly your vision starts blurring and everything fades to black..");
+    }
+
+    mvprintw(38, 10, "[Enter] Continue    [S] Skip");
+
+    i32 input = getch();
+    if(input == key_enter)
+    {
+      paragraphs++;
+    }
+    else if(input == key_s)
+    {
+      break;
+    }
+  }
+
+  clear();
+  game.state = state_quit;
 }
 
 internal void
@@ -1901,6 +2006,10 @@ run_game()
     if(game.state == state_main_menu)
     {
       main_menu();
+    }
+    else if(game.state == state_intro)
+    {
+      intro();
     }
     else if(game.state == state_play)
     {
@@ -1916,9 +2025,9 @@ run_game()
     {
       controls();
     }
-    else if(game.state == state_victory)
+    else if(game.state == state_outro)
     {
-      victory();
+      outro();
     }
   }
 }
