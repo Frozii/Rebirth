@@ -212,6 +212,245 @@ global u8 room[ROOM_WIDTH][ROOM_HEIGHT];
 global item_t items[ITEM_COUNT];
 global searchable_t searchables[SEARCHABLE_COUNT];
 
+internal char
+get_item_glyph_for_item_type(i32 type)
+{
+  char val = 0;
+
+  switch(type)
+  {
+    case item_metal_spade: return glyph_metal_spade; break;
+    case item_metal_spade_no_handle: return glyph_metal_spade_no_handle; break;
+    case item_knife: return glyph_knife; break;
+    case item_empty_vial: return glyph_vial; break;
+    case item_dihydrogen_monoxide: return glyph_vial; break;
+    case item_cupric_ore_powder: return glyph_vial; break;
+    case item_tin_ore_powder: return glyph_vial; break;
+    case item_tin: return glyph_tin; break;
+    case item_sodium_chloride: return glyph_vial; break;
+    case item_gypsum: return glyph_vial; break;
+    case item_cupric_sulfate: return glyph_vial; break;
+    case item_acetic_acid: return glyph_vial; break;
+    case item_magnet: return glyph_magnet; break;
+    case item_bunsen_burner: return glyph_bunsen_burner; break;
+    case item_bronze_key: return glyph_bronze_key; break;
+  }
+
+  return val;
+}
+
+internal i32
+get_next_free_item_id()
+{
+  i32 free_id = 0;
+  for(i32 i = 0; i < ITEM_COUNT; i++)
+  {
+    if(items[i].id > free_id)
+    {
+      free_id = items[i].id;
+    }
+  }
+
+  if(free_id == 0)
+  {
+    return 1;
+  }
+  else
+  {
+    return free_id + 1;
+  }
+}
+
+internal void
+get_item_name_for_item_type(char *storage, i32 type)
+{
+  switch(type)
+  {
+    case item_metal_spade: strcpy(storage, "Metal Spade"); break;
+    case item_metal_spade_no_handle: strcpy(storage, "Metal Spade (No Handle)"); break;
+    case item_knife: strcpy(storage, "Knife"); break;
+    case item_empty_vial: strcpy(storage, "Empty Vial"); break;
+    case item_dihydrogen_monoxide: strcpy(storage, "Dihydrogen Monoxide"); break;
+    case item_cupric_ore_powder: strcpy(storage, "Cupric Ore Powder"); break;
+    case item_tin_ore_powder: strcpy(storage, "Tin Ore Powder"); break;
+    case item_tin: strcpy(storage, "Tin"); break;
+    case item_sodium_chloride: strcpy(storage, "Sodium Chloride"); break;
+    case item_gypsum: strcpy(storage, "Gypsum"); break;
+    case item_cupric_sulfate: strcpy(storage, "Cupric Sulfate"); break;
+    case item_acetic_acid: strcpy(storage, "Acetic Acid"); break;
+    case item_magnet: strcpy(storage, "Magnet"); break;
+    case item_bunsen_burner: strcpy(storage, "Bunsen Burner"); break;
+    case item_bronze_key: strcpy(storage, "Bronze Key"); break;
+  }
+}
+
+internal inline i32
+equal_pos(i32 ax, i32 ay, i32 bx, i32 by)
+{
+  if(ax == bx && ay == by)
+  {
+    return 1;
+  }
+
+  return 0;
+}
+
+internal void
+add_searchable(i32 x, i32 y, item_e item_one, item_e item_two, item_e item_three)
+{
+  for(i32 i = 0; i < SEARCHABLE_COUNT; i++)
+  {
+    if(equal_pos(0, 0, searchables[i].x, searchables[i].y))
+    {
+      searchables[i].x = x;
+      searchables[i].y = y;
+      searchables[i].loot[0] = item_one;
+      searchables[i].loot[1] = item_two;
+      searchables[i].loot[2] = item_three;
+      break;
+    }
+  }
+}
+
+internal i32
+add_item(i32 x, i32 y, item_e type)
+{
+  for(i32 i = 0; i < ITEM_COUNT; i++)
+  {
+    if(!items[i].active && !items[i].in_inventory)
+    {
+      items[i].active = true;
+      items[i].type = type;
+      get_item_name_for_item_type(items[i].name, type);
+      items[i].id = get_next_free_item_id();
+      items[i].x = x;
+      items[i].y = y;
+      items[i].glyph = get_item_glyph_for_item_type(type);
+      return items[i].id;
+    }
+  }
+
+  return -1;
+}
+
+internal void
+init_game_data()
+{
+  // Game
+  memset(&game, 0, sizeof(game_t));
+  game.menu_option_selected = 1;
+  game.menu_option_count = 3;
+
+  // Player
+  memset(&player, 0, sizeof(player_t));
+  player.x = 3;
+  player.y = 6;
+
+  // Room
+  for(i32 x = 0; x < ROOM_WIDTH; x++)
+  {
+    for(i32 y = 0; y < ROOM_HEIGHT; y++)
+    {
+      room[x][y] = glyph_stone;
+    }
+  }
+
+  // Floor
+  for(i32 x = 3; x < ROOM_WIDTH - 3; x++)
+  {
+    for(i32 y = 2; y < ROOM_HEIGHT - 2; y++)
+    {
+      room[x][y] = glyph_floor;
+    }
+  }
+
+  room[2][4] = glyph_floor;
+  room[7][1] = glyph_floor;
+  room[8][1] = glyph_floor;
+  room[9][1] = glyph_floor;
+  room[13][1] = glyph_floor;
+  room[14][1] = glyph_floor;
+  room[15][1] = glyph_floor;
+  room[16][1] = glyph_floor;
+  room[6][8] = glyph_floor;
+  room[7][8] = glyph_floor;
+  room[8][8] = glyph_floor;
+  room[9][8] = glyph_floor;
+  room[10][8] = glyph_floor;
+  room[11][8] = glyph_floor;
+  room[12][8] = glyph_floor;
+  room[13][8] = glyph_floor;
+  room[20][4] = glyph_floor;
+  room[21][4] = glyph_floor;
+  room[22][4] = glyph_floor;
+
+  room[7][1] = glyph_bookshelf;
+  room[8][1] = glyph_bookshelf;
+  room[9][1] = glyph_bookshelf;
+  room[14][1] = glyph_bookshelf;
+  room[3][2] = glyph_bookshelf;
+  room[4][2] = glyph_bookshelf;
+  room[4][7] = glyph_bookshelf;
+  room[5][7] = glyph_bookshelf;
+
+  room[7][8] = glyph_bookshelf;
+  room[8][8] = glyph_bookshelf;
+  room[9][8] = glyph_bookshelf;
+  room[11][8] = glyph_bookshelf;
+
+  room[19][2] = glyph_crate;
+  room[20][2] = glyph_crate;
+  room[20][6] = glyph_crate;
+  room[19][7] = glyph_crate;
+  room[20][7] = glyph_crate;
+
+  room[18][2] = glyph_small_crate;
+  room[19][6] = glyph_small_crate;
+
+  room[21][4] = glyph_stone_door;
+  room[23][4] = glyph_wooden_door;
+
+  room[20][3] = glyph_open_chest;
+
+  room[10][4] = glyph_table;
+  room[11][4] = glyph_table;
+  room[12][4] = glyph_table;
+  room[13][4] = glyph_table;
+  room[10][5] = glyph_table;
+  room[11][5] = glyph_table;
+  room[12][5] = glyph_table;
+  room[13][5] = glyph_table;
+
+  room[11][3] = glyph_chair;
+  room[10][6] = glyph_chair;
+  room[14][3] = glyph_chair;
+
+  room[3][5] = glyph_torch;
+  room[16][7] = glyph_torch;
+
+  room[2][4] = glyph_chain;
+
+  // Items
+  memset(&items, 0, sizeof(items));
+  add_item(13, 4, item_metal_spade);
+  add_item(12, 5, item_bunsen_burner);
+  add_item(10, 4, item_empty_vial);
+
+  // Searchables
+  memset(&searchables, 0, sizeof(searchables));
+  add_searchable(4, 7, item_knife, item_none, item_none);
+  add_searchable(7, 8, item_dihydrogen_monoxide, item_dihydrogen_monoxide, item_dihydrogen_monoxide);
+  add_searchable(8, 8, item_cupric_ore_powder, item_none, item_none);
+  add_searchable(9, 8, item_tin_ore_powder, item_none, item_none);
+  add_searchable(11, 8, item_empty_vial, item_none, item_none);
+  add_searchable(19, 2, item_tin, item_none, item_none);
+  add_searchable(14, 1, item_sodium_chloride, item_none, item_none);
+  add_searchable(9, 1, item_gypsum, item_none, item_none);
+  add_searchable(8, 1, item_cupric_sulfate, item_none, item_none);
+  add_searchable(7, 1, item_dihydrogen_monoxide, item_acetic_acid, item_none);
+  add_searchable(3, 2, item_magnet, item_none, item_none);
+}
+
 internal void
 move_menu_option_selected_up()
 {
@@ -371,17 +610,6 @@ is_traversable(i32 x, i32 y)
   return result;
 }
 
-internal inline i32
-equal_pos(i32 ax, i32 ay, i32 bx, i32 by)
-{
-  if(ax == bx && ay == by)
-  {
-    return 1;
-  }
-
-  return 0;
-}
-
 internal item_e
 get_item_type_for_pos(i32 x, i32 y)
 {
@@ -408,56 +636,6 @@ get_item_pos_for_id(i32 id)
   }
 
   return -1;
-}
-
-internal void
-get_item_name_for_item_type(char *storage, i32 type)
-{
-  switch(type)
-  {
-    case item_metal_spade: strcpy(storage, "Metal Spade"); break;
-    case item_metal_spade_no_handle: strcpy(storage, "Metal Spade (No Handle)"); break;
-    case item_knife: strcpy(storage, "Knife"); break;
-    case item_empty_vial: strcpy(storage, "Empty Vial"); break;
-    case item_dihydrogen_monoxide: strcpy(storage, "Dihydrogen Monoxide"); break;
-    case item_cupric_ore_powder: strcpy(storage, "Cupric Ore Powder"); break;
-    case item_tin_ore_powder: strcpy(storage, "Tin Ore Powder"); break;
-    case item_tin: strcpy(storage, "Tin"); break;
-    case item_sodium_chloride: strcpy(storage, "Sodium Chloride"); break;
-    case item_gypsum: strcpy(storage, "Gypsum"); break;
-    case item_cupric_sulfate: strcpy(storage, "Cupric Sulfate"); break;
-    case item_acetic_acid: strcpy(storage, "Acetic Acid"); break;
-    case item_magnet: strcpy(storage, "Magnet"); break;
-    case item_bunsen_burner: strcpy(storage, "Bunsen Burner"); break;
-    case item_bronze_key: strcpy(storage, "Bronze Key"); break;
-  }
-}
-
-internal char
-get_item_glyph_for_item_type(i32 type)
-{
-  char val = 0;
-
-  switch(type)
-  {
-    case item_metal_spade: return glyph_metal_spade; break;
-    case item_metal_spade_no_handle: return glyph_metal_spade_no_handle; break;
-    case item_knife: return glyph_knife; break;
-    case item_empty_vial: return glyph_vial; break;
-    case item_dihydrogen_monoxide: return glyph_vial; break;
-    case item_cupric_ore_powder: return glyph_vial; break;
-    case item_tin_ore_powder: return glyph_vial; break;
-    case item_tin: return glyph_tin; break;
-    case item_sodium_chloride: return glyph_vial; break;
-    case item_gypsum: return glyph_vial; break;
-    case item_cupric_sulfate: return glyph_vial; break;
-    case item_acetic_acid: return glyph_vial; break;
-    case item_magnet: return glyph_magnet; break;
-    case item_bunsen_burner: return glyph_bunsen_burner; break;
-    case item_bronze_key: return glyph_bronze_key; break;
-  }
-
-  return val;
 }
 
 internal void
@@ -646,50 +824,6 @@ add_inventory_item(item_t item)
   }
 }
 
-internal i32
-get_next_free_item_id()
-{
-  i32 next_free = 0;
-
-  for(i32 i = 0; i < ITEM_COUNT; i++)
-  {
-    if(items[i].id > next_free)
-    {
-      next_free = items[i].id;
-    }
-  }
-
-  if(next_free == 0)
-  {
-    return 1;
-  }
-  else
-  {
-    return next_free + 1;
-  }
-}
-
-internal i32
-add_item(i32 x, i32 y, item_e type)
-{
-  for(i32 i = 0; i < ITEM_COUNT; i++)
-  {
-    if(!items[i].active && !items[i].in_inventory)
-    {
-      items[i].active = true;
-      items[i].type = type;
-      get_item_name_for_item_type(items[i].name, type);
-      items[i].id = get_next_free_item_id();
-      items[i].x = x;
-      items[i].y = y;
-      items[i].glyph = get_item_glyph_for_item_type(type);
-      return items[i].id;
-    }
-  }
-
-  return -1;
-}
-
 internal void
 render_room()
 {
@@ -783,15 +917,18 @@ push_loot_message(char **found_loot_names)
 
   if(names_to_append == 1)
   {
-    render_message("You start searching..\n  you find something:\n  %s.", found_loot_names[0]);
+    render_message("You start searching..\n  you find something:\n  %s.",
+                  found_loot_names[0]);
   }
   else if(names_to_append == 2)
   {
-    render_message("You start searching..\n  you find a couple things:\n  %s,\n  %s.", found_loot_names[0], found_loot_names[1]);
+    render_message("You start searching..\n  you find a couple things:\n  %s,\n  %s.",
+                  found_loot_names[0], found_loot_names[1]);
   }
   else if(names_to_append == 3)
   {
-    render_message("You start searching..\n  you find multiple things:\n  %s,\n  %s,\n  %s.", found_loot_names[0], found_loot_names[1], found_loot_names[2]);
+    render_message("You start searching..\n  you find multiple things:\n  %s,\n  %s,\n  %s.",
+                  found_loot_names[0], found_loot_names[1], found_loot_names[2]);
   }
 }
 
@@ -1995,7 +2132,8 @@ outro()
   }
 
   clear();
-  game.state = state_quit;
+  init_game_data();
+  game.state = state_main_menu;
 }
 
 internal void
@@ -2028,23 +2166,6 @@ run_game()
     else if(game.state == state_outro)
     {
       outro();
-    }
-  }
-}
-
-internal void
-add_searchable(i32 x, i32 y, item_e item_one, item_e item_two, item_e item_three)
-{
-  for(i32 i = 0; i < SEARCHABLE_COUNT; i++)
-  {
-    if(equal_pos(0, 0, searchables[i].x, searchables[i].y))
-    {
-      searchables[i].x = x;
-      searchables[i].y = y;
-      searchables[i].loot[0] = item_one;
-      searchables[i].loot[1] = item_two;
-      searchables[i].loot[2] = item_three;
-      break;
     }
   }
 }
@@ -2101,124 +2222,7 @@ init_game()
 
   init_pair(background_grey_pair, color_grey, color_grey);
 
-  // Stone
-  for(i32 x = 0; x < ROOM_WIDTH; x++)
-  {
-    for(i32 y = 0; y < ROOM_HEIGHT; y++)
-    {
-      room[x][y] = glyph_stone;
-    }
-  }
-
-  // Floor
-  for(i32 x = 3; x < ROOM_WIDTH - 3; x++)
-  {
-    for(i32 y = 2; y < ROOM_HEIGHT - 2; y++)
-    {
-      room[x][y] = glyph_floor;
-    }
-  }
-
-  room[2][4] = glyph_floor;
-  room[7][1] = glyph_floor;
-  room[8][1] = glyph_floor;
-  room[9][1] = glyph_floor;
-  room[13][1] = glyph_floor;
-  room[14][1] = glyph_floor;
-  room[15][1] = glyph_floor;
-  room[16][1] = glyph_floor;
-  room[6][8] = glyph_floor;
-  room[7][8] = glyph_floor;
-  room[8][8] = glyph_floor;
-  room[9][8] = glyph_floor;
-  room[10][8] = glyph_floor;
-  room[11][8] = glyph_floor;
-  room[12][8] = glyph_floor;
-  room[13][8] = glyph_floor;
-  room[20][4] = glyph_floor;
-  room[21][4] = glyph_floor;
-  room[22][4] = glyph_floor;
-
-  // Bookshelves
-  room[7][1] = glyph_bookshelf;
-  room[8][1] = glyph_bookshelf;
-  room[9][1] = glyph_bookshelf;
-  room[14][1] = glyph_bookshelf;
-  room[3][2] = glyph_bookshelf;
-  room[4][2] = glyph_bookshelf;
-  room[4][7] = glyph_bookshelf;
-  room[5][7] = glyph_bookshelf;
-
-  room[7][8] = glyph_bookshelf;
-  room[8][8] = glyph_bookshelf;
-  room[9][8] = glyph_bookshelf;
-  room[11][8] = glyph_bookshelf;
-
-  // Crates
-  room[19][2] = glyph_crate;
-  room[20][2] = glyph_crate;
-  room[20][6] = glyph_crate;
-  room[19][7] = glyph_crate;
-  room[20][7] = glyph_crate;
-
-  // Small crates
-  room[18][2] = glyph_small_crate;
-  room[19][6] = glyph_small_crate;
-
-  // Doors
-  room[21][4] = glyph_stone_door;
-  room[23][4] = glyph_wooden_door;
-
-  // Chests
-  room[20][3] = glyph_open_chest;
-
-  // Tables
-  room[10][4] = glyph_table;
-  room[11][4] = glyph_table;
-  room[12][4] = glyph_table;
-  room[13][4] = glyph_table;
-  room[10][5] = glyph_table;
-  room[11][5] = glyph_table;
-  room[12][5] = glyph_table;
-  room[13][5] = glyph_table;
-
-  // Chairs
-  room[11][3] = glyph_chair;
-  room[10][6] = glyph_chair;
-  room[14][3] = glyph_chair;
-
-  // Torches
-  room[3][5] = glyph_torch;
-  room[16][7] = glyph_torch;
-
-  // Chains
-  room[2][4] = glyph_chain;
-
-  // Game
-  game.menu_option_selected = 1;
-  game.menu_option_count = 3;
-
-  // Player
-  player.x = 3;
-  player.y = 6;
-
-  // Items
-  add_item(13, 4, item_metal_spade);
-  add_item(12, 5, item_bunsen_burner);
-  add_item(10, 4, item_empty_vial);
-
-  // Searchables
-  add_searchable(4, 7, item_knife, item_none, item_none);
-  add_searchable(7, 8, item_dihydrogen_monoxide, item_dihydrogen_monoxide, item_dihydrogen_monoxide);
-  add_searchable(8, 8, item_cupric_ore_powder, item_none, item_none);
-  add_searchable(9, 8, item_tin_ore_powder, item_none, item_none);
-  add_searchable(11, 8, item_empty_vial, item_none, item_none);
-  add_searchable(19, 2, item_tin, item_none, item_none);
-  add_searchable(14, 1, item_sodium_chloride, item_none, item_none);
-  add_searchable(9, 1, item_gypsum, item_none, item_none);
-  add_searchable(8, 1, item_cupric_sulfate, item_none, item_none);
-  add_searchable(7, 1, item_dihydrogen_monoxide, item_acetic_acid, item_none);
-  add_searchable(3, 2, item_magnet, item_none, item_none);
+  init_game_data();
 
   return 1;
 }
