@@ -152,6 +152,8 @@ typedef enum
 typedef struct
 {
   game_state_e state;
+
+  i32 turns_since_event_start;
   game_event_e event;
 
   i32 menu_option_selected;
@@ -220,21 +222,6 @@ global player_t player;
 global u8 room[ROOM_WIDTH][ROOM_HEIGHT];
 global item_t items[ITEM_COUNT];
 global searchable_t searchables[SEARCHABLE_COUNT];
-
-// NOTE(Rami):
-// internal int
-// poll_event()
-// {
-//   i32 result = event_none;
-
-//   if(game.event == event_blackout)
-//   {
-
-//     result = event_blackout;
-//   }
-
-//   return result;
-// }
 
 internal char
 get_item_glyph_for_item_type(i32 type)
@@ -666,7 +653,8 @@ get_item_pos_for_id(i32 id)
 internal void
 render_items()
 {
-  if(game.event == event_blackout)
+  if(game.event == event_blackout &&
+     game.turns_since_event_start >= 1)
   {
     for(i32 i = 0; i < ITEM_COUNT; i++)
     {
@@ -865,7 +853,8 @@ add_inventory_item(item_t item)
 internal void
 render_room()
 {
-  if(game.event == event_blackout)
+  if(game.event == event_blackout &&
+     game.turns_since_event_start >= 1)
   {
     for(i32 x = 0; x < ROOM_WIDTH; x++)
     {
@@ -877,7 +866,7 @@ render_room()
 
     // NOTE(Rami):
     clear_message();
-    render_message("TESTING");
+    render_message("For a moment the torches seem to be snuffed out..\n  You get an uneasy feeling..");
   }
   else
   {
@@ -931,7 +920,8 @@ render_room()
 internal void
 render_player()
 {
-  if(game.event == event_blackout)
+  if(game.event == event_blackout &&
+     game.turns_since_event_start >= 1)
   {
     mvprintw(player.y, player.x, " ");
   }
@@ -1246,7 +1236,18 @@ interact(i32 x, i32 y)
       {
         if(game.first_door_spade_inserted)
         {
-          render_message("You try to open the door using the spade as leverage..\n  The spade falls out since there's nothing actually holding it in place.");
+          render_message("You try to open the door using the spade as leverage..\n  The spade falls out since there's nothing actually holding it in place.\n  You pick it back up.");
+          game.first_door_spade_inserted = false;
+
+          // Add item to game, make sure to mark it as not active and in the inventory
+          // since it will be added to the inventory by default
+          i32 item_id = add_item(0, 0, item_metal_spade_no_handle);
+
+          // Add item to inventory
+          i32 index = get_item_pos_for_id(item_id);
+          items[index].active = false;
+          items[index].in_inventory = true;
+          add_inventory_item(items[index]);
         }
         else
         {
@@ -1876,7 +1877,12 @@ update_input()
 
   if(game.event)
   {
-    game.event = event_none;
+    if(game.turns_since_event_start >= 1)
+    {
+      game.event = event_none;
+    }
+
+    game.turns_since_event_start++;
   }
 
   if(is_valid_input(player.input))
