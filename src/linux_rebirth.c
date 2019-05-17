@@ -33,13 +33,15 @@ typedef u32 b32;
 
 #define ASCII_LOWERCASE_START 96
 
+// NOTE(Rami): TODO
+// Add a turn counter for events so we can apply them later rather than instantly
+
 enum
 {
   key_enter = 10,
   key_up_arrow = KEY_UP,
   key_down_arrow = KEY_DOWN,
-  key_s = 115,
-} key_e;
+} special_key_e;
 
 enum
 {
@@ -56,7 +58,7 @@ enum
   wood_pair,
   metal_pair,
   light_pair,
-  grey_pair,
+  dark_cyan_pair,
   // NOTE(Rami): Do we need this pair?
   white_on_grey_pair,
 
@@ -73,6 +75,7 @@ enum
   color_metal,
   color_light,
   color_grey,
+  color_dark_cyan
 } color_e;
 
 enum
@@ -140,10 +143,16 @@ enum
   searchable_searched
 } searchable_value_e;
 
+typedef enum
+{
+  event_none,
+  event_blackout
+} game_event_e;
 
 typedef struct
 {
   game_state_e state;
+  game_event_e event;
 
   i32 menu_option_selected;
   i32 menu_option_count;
@@ -212,31 +221,45 @@ global u8 room[ROOM_WIDTH][ROOM_HEIGHT];
 global item_t items[ITEM_COUNT];
 global searchable_t searchables[SEARCHABLE_COUNT];
 
+// NOTE(Rami):
+// internal int
+// poll_event()
+// {
+//   i32 result = event_none;
+
+//   if(game.event == event_blackout)
+//   {
+
+//     result = event_blackout;
+//   }
+
+//   return result;
+// }
+
 internal char
 get_item_glyph_for_item_type(i32 type)
 {
-  char val = 0;
-
+  char result = 0;
   switch(type)
   {
-    case item_metal_spade: return glyph_metal_spade; break;
-    case item_metal_spade_no_handle: return glyph_metal_spade_no_handle; break;
-    case item_knife: return glyph_knife; break;
-    case item_empty_vial: return glyph_vial; break;
-    case item_dihydrogen_monoxide: return glyph_vial; break;
-    case item_cupric_ore_powder: return glyph_vial; break;
-    case item_tin_ore_powder: return glyph_vial; break;
-    case item_tin: return glyph_tin; break;
-    case item_sodium_chloride: return glyph_vial; break;
-    case item_gypsum: return glyph_vial; break;
-    case item_cupric_sulfate: return glyph_vial; break;
-    case item_acetic_acid: return glyph_vial; break;
-    case item_magnet: return glyph_magnet; break;
-    case item_bunsen_burner: return glyph_bunsen_burner; break;
-    case item_bronze_key: return glyph_bronze_key; break;
+    case item_metal_spade: result = glyph_metal_spade; break;
+    case item_metal_spade_no_handle: result = glyph_metal_spade_no_handle; break;
+    case item_knife: result = glyph_knife; break;
+    case item_empty_vial: result = glyph_vial; break;
+    case item_dihydrogen_monoxide: result = glyph_vial; break;
+    case item_cupric_ore_powder: result = glyph_vial; break;
+    case item_tin_ore_powder: result = glyph_vial; break;
+    case item_tin: result = glyph_tin; break;
+    case item_sodium_chloride: result = glyph_vial; break;
+    case item_gypsum: result = glyph_vial; break;
+    case item_cupric_sulfate: result = glyph_vial; break;
+    case item_acetic_acid: result = glyph_vial; break;
+    case item_magnet: result = glyph_magnet; break;
+    case item_bunsen_burner: result = glyph_bunsen_burner; break;
+    case item_bronze_key: result = glyph_bronze_key; break;
   }
 
-  return val;
+  return result;
 }
 
 internal i32
@@ -253,12 +276,14 @@ get_next_free_item_id()
 
   if(free_id == 0)
   {
-    return 1;
+    free_id = 1;
   }
   else
   {
-    return free_id + 1;
+    free_id++;
   }
+
+  return free_id;
 }
 
 internal void
@@ -641,13 +666,26 @@ get_item_pos_for_id(i32 id)
 internal void
 render_items()
 {
-  for(i32 i = 0; i < ITEM_COUNT; i++)
+  if(game.event == event_blackout)
   {
-    if(items[i].active)
+    for(i32 i = 0; i < ITEM_COUNT; i++)
     {
-      char c[2] = {0};
-      c[0] = items[i].glyph;
-      mvprintw(items[i].y, items[i].x, c);
+      if(items[i].active)
+      {
+        mvprintw(items[i].y, items[i].x, " ");
+      }
+    }
+  }
+  else
+  {
+    for(i32 i = 0; i < ITEM_COUNT; i++)
+    {
+      if(items[i].active)
+      {
+        char c[2] = {0};
+        c[0] = items[i].glyph;
+        mvprintw(items[i].y, items[i].x, c);
+      }
     }
   }
 }
@@ -827,48 +865,65 @@ add_inventory_item(item_t item)
 internal void
 render_room()
 {
-  for(i32 x = 0; x < ROOM_WIDTH; x++)
+  if(game.event == event_blackout)
   {
-    for(i32 y = 0; y < ROOM_HEIGHT; y++)
+    for(i32 x = 0; x < ROOM_WIDTH; x++)
     {
-      char c[2] = {0};
-      c[0] = room[x][y];
+      for(i32 y = 0; y < ROOM_HEIGHT; y++)
+      {
+        mvprintw(y, x, " ");
+      }
+    }
 
-      i32 pair = white_pair;
+    // NOTE(Rami):
+    clear_message();
+    render_message("TESTING");
+  }
+  else
+  {
+    for(i32 x = 0; x < ROOM_WIDTH; x++)
+    {
+      for(i32 y = 0; y < ROOM_HEIGHT; y++)
+      {
+        char c[2] = {0};
+        c[0] = room[x][y];
 
-      if(room[x][y] == glyph_stone ||
-         room[x][y] == glyph_floor)
-      {
-        attron(COLOR_PAIR(stone_pair));
-        pair = stone_pair;
-      }
-      else if(room[x][y] == glyph_bookshelf ||
-              room[x][y] == glyph_crate ||
-              room[x][y] == glyph_small_crate ||
-              room[x][y] == glyph_table ||
-              room[x][y] == glyph_chair ||
-              room[x][y] == glyph_open_chest ||
-              room[x][y] == glyph_wooden_door ||
-              room[x][y] == glyph_wooden_door_open)
-      {
-        attron(COLOR_PAIR(wood_pair));
-        pair = wood_pair;
-      }
-      else if(room[x][y] == glyph_stone_door ||
-              room[x][y] == glyph_stone_door_open ||
-              room[x][y] == glyph_chain)
-      {
-        attron(COLOR_PAIR(metal_pair));
-        pair = metal_pair;
-      }
-      else if(room[x][y] == glyph_torch)
-      {
-        attron(COLOR_PAIR(yellow_pair));
-        pair = yellow_pair;
-      }
+        i32 pair = white_pair;
 
-      mvprintw(y, x, c);
-      attroff(COLOR_PAIR(pair));
+        if(room[x][y] == glyph_stone ||
+           room[x][y] == glyph_floor)
+        {
+          attron(COLOR_PAIR(stone_pair));
+          pair = stone_pair;
+        }
+        else if(room[x][y] == glyph_bookshelf ||
+                room[x][y] == glyph_crate ||
+                room[x][y] == glyph_small_crate ||
+                room[x][y] == glyph_table ||
+                room[x][y] == glyph_chair ||
+                room[x][y] == glyph_open_chest ||
+                room[x][y] == glyph_wooden_door ||
+                room[x][y] == glyph_wooden_door_open)
+        {
+          attron(COLOR_PAIR(wood_pair));
+          pair = wood_pair;
+        }
+        else if(room[x][y] == glyph_stone_door ||
+                room[x][y] == glyph_stone_door_open ||
+                room[x][y] == glyph_chain)
+        {
+          attron(COLOR_PAIR(metal_pair));
+          pair = metal_pair;
+        }
+        else if(room[x][y] == glyph_torch)
+        {
+          attron(COLOR_PAIR(yellow_pair));
+          pair = yellow_pair;
+        }
+
+        mvprintw(y, x, c);
+        attroff(COLOR_PAIR(pair));
+      }
     }
   }
 }
@@ -876,9 +931,16 @@ render_room()
 internal void
 render_player()
 {
-  attron(COLOR_PAIR(cyan_pair));
-  mvprintw(player.y, player.x, "@");
-  attroff(COLOR_PAIR(cyan_pair));
+  if(game.event == event_blackout)
+  {
+    mvprintw(player.y, player.x, " ");
+  }
+  else
+  {
+    attron(COLOR_PAIR(cyan_pair));
+    mvprintw(player.y, player.x, "@");
+    attroff(COLOR_PAIR(cyan_pair));
+  }
 }
 
 internal i32
@@ -1170,6 +1232,8 @@ interact(i32 x, i32 y)
       room[20][4] = glyph_stone_door_open;
       room[21][4] = glyph_floor;
 
+      game.event = event_blackout;
+
       game.first_door_open = true;
     }
     else
@@ -1291,7 +1355,7 @@ inspect(i32 x, i32 y)
             item_e type = get_item_type_for_pos(x, y);
             if(type == item_empty_vial)
             {
-              render_message("It's a glass vial but it's empty.");
+              render_message("It's a glass vial, it's empty.");
             }
             else if(type == item_dihydrogen_monoxide)
             {
@@ -1307,7 +1371,7 @@ inspect(i32 x, i32 y)
             }
             else if(type == item_sodium_chloride)
             {
-              render_message("A vial filled with white substance.\n  It has a label that says \"Sodium Chloride\".");
+              render_message("A vial filled with a white substance.\n  It has a label that says \"Sodium Chloride\".");
             }
             else if(type == item_gypsum)
             {
@@ -1315,7 +1379,7 @@ inspect(i32 x, i32 y)
             }
             else if(type == item_cupric_sulfate)
             {
-              render_message("A vial filled with white substance.\n  It has a label that says \"Cupric Sulfate\".");
+              render_message("A vial filled with a white substance.\n  It has a label that says \"Cupric Sulfate\".");
             }
             else if(type == item_acetic_acid)
             {
@@ -1810,11 +1874,18 @@ update_input()
   player.input = getch();
   clear_message();
 
+  if(game.event)
+  {
+    game.event = event_none;
+  }
+
   if(is_valid_input(player.input))
   {
     if(player.input == 'q')
     {
-      game.state = state_quit;
+      clear();
+      init_game_data();
+      game.state = state_main_menu;
     }
     else
     {
@@ -1946,7 +2017,6 @@ render_inventory()
     if(player.inventory[i].in_inventory)
     {
       count++;
-
       if(count == player.inventory_item_selected)
       {
         attron(COLOR_PAIR(cyan_pair));
@@ -1956,9 +2026,9 @@ render_inventory()
       else if(count == player.inventory_first_combination_item_num ||
               count == player.inventory_second_combination_item_num)
       {
-        attron(COLOR_PAIR(grey_pair));
+        attron(COLOR_PAIR(dark_cyan_pair));
         mvprintw(y, x, "%c: %s", 96 + count, player.inventory[i].name);
-        attroff(COLOR_PAIR(grey_pair));
+        attroff(COLOR_PAIR(dark_cyan_pair));
       }
       else
       {
@@ -1966,7 +2036,6 @@ render_inventory()
       }
 
       y++;
-
       if(y > 11)
       {
         x += 28;
@@ -2007,7 +2076,7 @@ controls()
   mvprintw(24, 10, "b: Toggle inventory");
   mvprintw(25, 10, "c: Choose two inventory items to be combined");
 
-  mvprintw(27, 10, "q: Quit game");
+  mvprintw(27, 10, "q: Quit back to main menu");
 
   mvprintw(38, 10, "[Enter] Return");
 
@@ -2051,7 +2120,7 @@ intro()
     {
       paragraphs++;
     }
-    else if(input == key_s)
+    else if(input == 's')
     {
       break;
     }
@@ -2125,7 +2194,7 @@ outro()
     {
       paragraphs++;
     }
-    else if(input == key_s)
+    else if(input == 's')
     {
       break;
     }
@@ -2205,6 +2274,7 @@ init_game()
   init_color(color_wood, 627, 321, 176);
   init_color(color_metal, 780, 780, 780);
   init_color(color_grey, 200, 200, 200);
+  init_color(color_dark_cyan, 0, 300, 300);
 
   init_pair(black_pair, COLOR_BLACK, COLOR_BLACK);
   init_pair(red_pair, COLOR_RED, COLOR_BLACK);
@@ -2217,7 +2287,7 @@ init_game()
   init_pair(stone_pair, color_stone, COLOR_BLACK);
   init_pair(wood_pair, color_wood, COLOR_BLACK);
   init_pair(metal_pair, color_metal, COLOR_BLACK);
-  init_pair(grey_pair, color_grey, COLOR_BLACK);
+  init_pair(dark_cyan_pair, color_dark_cyan, COLOR_BLACK);
   init_pair(white_on_grey_pair, COLOR_WHITE, color_grey);
 
   init_pair(background_grey_pair, color_grey, color_grey);
