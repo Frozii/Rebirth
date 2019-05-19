@@ -33,9 +33,6 @@ typedef u32 b32;
 
 #define ASCII_LOWERCASE_START 96
 
-// NOTE(Rami): TODO
-// Add a turn counter for events so we can apply them later rather than instantly
-
 enum
 {
   key_enter = 10,
@@ -59,13 +56,8 @@ enum
   metal_pair,
   light_pair,
   dark_cyan_pair,
-  // NOTE(Rami): Do we need this pair?
-  white_on_grey_pair,
 
-  background_grey_pair,
-
-  // NOTE(Rami): Remove later!
-  pair_count
+  color_pair_count
 } color_pair_e;
 
 enum
@@ -102,7 +94,8 @@ enum
   glyph_metal_spade = 'S',
   glyph_metal_spade_no_handle = 's',
   glyph_bunsen_burner = '^',
-  glyph_bronze_key = '='
+  glyph_bronze_key = '=',
+  glyph_ash = ','
 } glyph_e;
 
 typedef enum
@@ -143,6 +136,13 @@ enum
   searchable_searched
 } searchable_value_e;
 
+// NOTE(Rami): Implement
+enum
+{
+  error_no_color_support
+} game_error_e;
+
+
 typedef enum
 {
   event_none,
@@ -152,9 +152,9 @@ typedef enum
 typedef struct
 {
   game_state_e state;
-
-  i32 turns_since_event_start;
   game_event_e event;
+  i32 event_turns_since_start;
+  i32 event_turns_to_activate;
 
   i32 menu_option_selected;
   i32 menu_option_count;
@@ -200,13 +200,14 @@ typedef struct
   b32 picking_up;
 
   item_t inventory[ITEM_COUNT];
+  b32 inventory_enabled;
+  i32 inventory_item_selected;
+  i32 inventory_item_count;
+
   i32 inventory_first_combination_item_num;
   i32 inventory_second_combination_item_num;
   item_e inventory_first_combination_item;
   item_e inventory_second_combination_item;
-  b32 inventory_enabled;
-  i32 inventory_item_selected;
-  i32 inventory_item_count;
 } player_t;
 
 typedef struct
@@ -222,6 +223,26 @@ global player_t player;
 global u8 room[ROOM_WIDTH][ROOM_HEIGHT];
 global item_t items[ITEM_COUNT];
 global searchable_t searchables[SEARCHABLE_COUNT];
+
+internal int
+is_item_pos(i32 x, i32 y)
+{
+  i32 result = 0;
+
+  for(i32 i = 0; i < ITEM_COUNT; i++)
+  {
+    if(items[i].active && !items[i].in_inventory)
+    {
+      if(x == items[i].x && y == items[i].y)
+      {
+        result = 1;
+        break;
+      }
+    }
+  }
+
+  return result;
+}
 
 internal char
 get_item_glyph_for_item_type(i32 type)
@@ -327,22 +348,26 @@ add_searchable(i32 x, i32 y, item_e item_one, item_e item_two, item_e item_three
 internal i32
 add_item(i32 x, i32 y, item_e type)
 {
+  i32 result = -1;
+
   for(i32 i = 0; i < ITEM_COUNT; i++)
   {
     if(!items[i].active && !items[i].in_inventory)
     {
       items[i].active = true;
+      items[i].in_inventory = false;
       items[i].type = type;
       get_item_name_for_item_type(items[i].name, type);
       items[i].id = get_next_free_item_id();
       items[i].x = x;
       items[i].y = y;
       items[i].glyph = get_item_glyph_for_item_type(type);
-      return items[i].id;
+      result = items[i].id;
+      break;
     }
   }
 
-  return -1;
+  return result;
 }
 
 internal void
@@ -350,6 +375,7 @@ init_game_data()
 {
   // Game
   memset(&game, 0, sizeof(game_t));
+  game.event_turns_to_activate = 2;
   game.menu_option_selected = 1;
   game.menu_option_count = 3;
 
@@ -575,35 +601,6 @@ get_item_type_for_inventory_position(i32 i)
   return player.inventory[i - 1].type;
 }
 
-// NOTE(Rami): Do we need this?
-// internal i32 item_in_inventory(item_e type)
-// {
-//   for(i32 i = 0; i < ITEM_COUNT; i++)
-//   {
-//     if(player.inventory[i].in_inventory &&
-//        player.inventory[i].type == type)
-//     {
-//       return 1;
-//     }
-//   }
-
-//   return 0;
-// }
-
-// NOTE(Rami): Do we need this?
-// internal i32 get_inventory_position_for_item_type(item_e type)
-// {
-//   for(i32 i = 0; i < ITEM_COUNT; i++)
-//   {
-//     if(player.inventory[i].type == type)
-//     {
-//       return i + 1;
-//     }
-//   }
-
-//   return -1;
-// }
-
 internal i32
 is_traversable(i32 x, i32 y)
 {
@@ -654,7 +651,7 @@ internal void
 render_items()
 {
   if(game.event == event_blackout &&
-     game.turns_since_event_start >= 1)
+     game.event_turns_since_start >= game.event_turns_to_activate)
   {
     for(i32 i = 0; i < ITEM_COUNT; i++)
     {
@@ -854,7 +851,7 @@ internal void
 render_room()
 {
   if(game.event == event_blackout &&
-     game.turns_since_event_start >= 1)
+     game.event_turns_since_start >= game.event_turns_to_activate)
   {
     for(i32 x = 0; x < ROOM_WIDTH; x++)
     {
@@ -864,7 +861,6 @@ render_room()
       }
     }
 
-    // NOTE(Rami):
     clear_message();
     render_message("For a moment the torches seem to be snuffed out..\n  You get an uneasy feeling..");
   }
@@ -921,7 +917,7 @@ internal void
 render_player()
 {
   if(game.event == event_blackout &&
-     game.turns_since_event_start >= 1)
+     game.event_turns_since_start >= game.event_turns_to_activate)
   {
     mvprintw(player.y, player.x, " ");
   }
@@ -1004,11 +1000,7 @@ add_searchable_loot(i32 x, i32 y)
         {
           get_item_name_for_item_type(found_loot_names[loot_index], searchables[i].loot[loot_index]);
 
-          // Add item to game, make sure to mark it as not active and in the inventory
-          // since it will be added to the inventory by default.
           i32 item_id = add_item(0, 0, searchables[i].loot[loot_index]);
-
-          // Add item to inventory.
           i32 index = get_item_pos_for_id(item_id);
           items[index].active = false;
           items[index].in_inventory = true;
@@ -1176,7 +1168,73 @@ use_item(i32 x, i32 y)
           }
         }
       }
-      else if(room[x][y] == glyph_wooden_door_open)
+      else if(room[x][y] == glyph_chair)
+      {
+        if(item_type == item_bunsen_burner)
+        {
+          render_message("The chair gets set ablaze..\n  All that remains is a pile of ash.");
+          room[x][y] = glyph_ash;
+        }
+        else
+        {
+          render_message("Nothing interesting happens.");
+        }
+      }
+      else if(room[x][y] == glyph_table)
+      {
+        if(item_type == item_bunsen_burner)
+        {
+          if(is_item_pos(x, y))
+          {
+            render_message("You don't want to burn it because there's something on the table.");
+          }
+          else
+          {
+            render_message("The piece of table gets set ablaze..\n  All that remains is a pile of ash.");
+            room[x][y] = glyph_ash;
+          }
+        }
+        else
+        {
+          render_message("Nothing interesting happens.");
+        }
+      }
+      else if(room[x][y] == glyph_bookshelf)
+      {
+        if(item_type == item_bunsen_burner)
+        {
+          render_message("You don't want to burn that because there might be something of value there.");
+        }
+        else 
+        {
+          render_message("Nothing interesting happens.");
+        }
+      }
+      else if(room[x][y] == glyph_small_crate ||
+              room[x][y] == glyph_crate)
+      {
+        if(item_type == item_bunsen_burner)
+        {
+          render_message("You don't want to burn that because there might be something of value there.");
+        }
+        else
+        {
+          render_message("Nothing interesting happens.");
+        }
+      }
+      else if(room[x][y] == glyph_open_chest)
+      {
+        if(item_type == item_bunsen_burner)
+        {
+          render_message("The chest gets set ablaze..\n  All that remains is a pile of ash.");
+          room[x][y] = glyph_ash;
+        }
+        else
+        {
+          render_message("Nothing interesting happens.");
+        }
+      }
+      else
       {
         render_message("Nothing interesting happens.");
       }
@@ -1239,11 +1297,7 @@ interact(i32 x, i32 y)
           render_message("You try to open the door using the spade as leverage..\n  The spade falls out since there's nothing actually holding it in place.\n  You pick it back up.");
           game.first_door_spade_inserted = false;
 
-          // Add item to game, make sure to mark it as not active and in the inventory
-          // since it will be added to the inventory by default
           i32 item_id = add_item(0, 0, item_metal_spade_no_handle);
-
-          // Add item to inventory
           i32 index = get_item_pos_for_id(item_id);
           items[index].active = false;
           items[index].in_inventory = true;
@@ -1282,7 +1336,7 @@ interact(i32 x, i32 y)
     case glyph_crate: render_message("You search the crate..\n  you find nothing useful."); break;
     case glyph_small_crate: render_message("You search the small crate..\n  you find nothing useful."); break;
     case glyph_open_chest: render_message("There's nothing in there."); break;
-    case glyph_table: render_message("You look under the table..\n  nothing but rocks, dust and worms crawling around."); break;
+    case glyph_table: render_message("You look under the table..\n  nothing but small rocks and dust."); break;
     case glyph_chair: render_message("Just an ordinary chair, except it looks old as hell and beat up."); break;
     case glyph_chain: render_message("You don't see a way of getting the key because of the chain."); break;
     case glyph_stone_door_open: render_message("You already opened it."); break;
@@ -1397,17 +1451,18 @@ inspect(i32 x, i32 y)
   switch(room[x][y])
   {
     case glyph_stone: render_message("A stone surface, looks old and covered in moss."); break;
-    case glyph_floor: render_message("An uneven stone floor."); break;
+    case glyph_floor: render_message("An uneven stone floor, worms can be seen crawling around on it."); break;
     case glyph_bookshelf: render_message("A tall old bookshelf with some haphazardly placed books in it."); break;
     case glyph_crate: render_message("A large wooden crate."); break;
     case glyph_small_crate: render_message("A small wooden crate."); break;
     case glyph_open_chest: render_message("A wooden chest that's already open, it's completely empty."); break;
     case glyph_table: render_message("A worn down rickety table with text and markings all over it."); break;
     case glyph_chair: render_message("A chair exactly like the other ones in this room..\n  Some are missing their legs."); break;
-    case glyph_torch: render_message("A torch on the wall, it burns very dimly."); break;
+    case glyph_torch: render_message("A lit torch on the wall, it burns calmly."); break;
     case glyph_chain: render_message("A stone surface with a big chain hanging from it all the way down to the ground..\n  There's a bronze key at the end of the chain."); break;
     case glyph_stone_door_open: render_message("It's the stone door but it's wide open this time."); break;
     case glyph_wooden_door_open: render_message("It's the wooden door but it's wide open this time."); break;
+    case glyph_ash: render_message("Some ashes on the floor."); break;
     case glyph_wooden_door:
     {
       if(game.second_door_key_inserted)
@@ -1477,11 +1532,7 @@ combine(item_e first_type, item_e second_type)
       remove_inventory_item(player.inventory_second_combination_item_num);
     }
 
-    // Add item to game, make sure to mark it as not active and in the inventory
-    // since it will be added to the inventory by default
     i32 item_id = add_item(0, 0, item_metal_spade_no_handle);
-
-    // Add item to inventory
     i32 index = get_item_pos_for_id(item_id);
     items[index].active = false;
     items[index].in_inventory = true;
@@ -1605,11 +1656,7 @@ combine(item_e first_type, item_e second_type)
     {
       render_message("You pry the duplicate bronze key out of the tin.");
 
-      // Add item to game, make sure to mark it as not active and in the inventory
-      // since it will be added to the inventory by default
       i32 item_id = add_item(0, 0, item_bronze_key);
-
-      // Add item to inventory
       i32 index = get_item_pos_for_id(item_id);
       items[index].active = false;
       items[index].in_inventory = true;
@@ -1877,12 +1924,12 @@ update_input()
 
   if(game.event)
   {
-    if(game.turns_since_event_start >= 1)
+    if(game.event_turns_since_start >= game.event_turns_to_activate)
     {
       game.event = event_none;
     }
 
-    game.turns_since_event_start++;
+    game.event_turns_since_start++;
   }
 
   if(is_valid_input(player.input))
@@ -1903,30 +1950,11 @@ update_input()
 internal void
 render_ui()
 {
+  #if REBIRTH_SLOW
   mvprintw(11, 0, "Turn: %d", player.turn);
 
   mvprintw(12, 0, "x: %d", player.x);
   mvprintw(13, 0, "y: %d", player.y);
-
-  i32 x = 135;
-  i32 y = 1;
-  i32 num = 0;
-  for(i32 i = 0; i < pair_count; i++)
-  {
-    attron(COLOR_PAIR(i));
-    mvprintw(y, x, "#");
-    attroff(COLOR_PAIR(i));
-
-    x++;
-    num++;
-
-    if(num == 16)
-    {
-      x = 135;
-      y++;
-      num = 0;
-    }
-  }
 
   i32 debug_x = 0;
   i32 debug_y = 22;
@@ -1978,6 +2006,7 @@ render_ui()
   mvprintw(11, 86, "second_door_key_imprint_made: %d", game.second_door_key_imprint_made);
   mvprintw(12, 86, "second_door_gypsum_added: %d", game.second_door_gypsum_added);
   mvprintw(13, 86, "second_door_dihydrogen_monoxide_added: %d", game.second_door_dihydrogen_monoxide_added);
+  #endif
 }
 
 internal void
@@ -2084,7 +2113,7 @@ controls()
 
   mvprintw(27, 10, "q: Quit back to main menu");
 
-  mvprintw(38, 10, "[Enter] Return");
+  mvprintw(31, 10, "[Enter] Return");
 
   i32 input = getch();
   if(input == key_enter)
@@ -2103,6 +2132,8 @@ intro()
     mvprintw(2, 10, "Eyes are Open");
     mvprintw(3, 10, "_____________");
 
+    mvprintw(2, 28, "[Enter] Continue  [S] Skip");
+
     if(paragraphs == 1)
     {
       mvprintw(5, 10, "You awake, eyes wide open staring infont of you, not sure if in a");
@@ -2118,8 +2149,6 @@ intro()
       mvprintw(12, 10, "doesn't to be anything valuable on you at the moment either. At least");
       mvprintw(13, 10, "you are feeling well-rested for now.");
     }
-
-    mvprintw(38, 10, "[Enter] Continue    [S] Skip");
 
     i32 input = getch();
     if(input == key_enter)
@@ -2144,6 +2173,8 @@ outro()
   {
     mvprintw(2, 10, "Black and White");
     mvprintw(3, 10, "_______________");
+
+    mvprintw(2, 30, "[Enter] Continue  [S] Skip");
 
     if(paragraphs == 1)
     {
@@ -2192,8 +2223,6 @@ outro()
       mvprintw(35, 10, "His voice clearly reaches you and you hear him say \"Looks like you made");
       mvprintw(36, 10, "it\". Suddenly your vision starts blurring and everything fades to black..");
     }
-
-    mvprintw(38, 10, "[Enter] Continue    [S] Skip");
 
     i32 input = getch();
     if(input == key_enter)
@@ -2250,11 +2279,6 @@ init_game()
 {
   initscr();
 
-  // NOTE(Rami): Maybe have an enum for the possible error numbers,
-  // then pass that to exit_game() for example so it can print out
-  // the correct error after ncurses has been closed.
-
-  // NOTE(Rami): Add && to check COLORS is at least the amount of colors we need.
   if(!has_colors())
   {
     printf("Your terminal does not support colors.\n");
@@ -2294,9 +2318,6 @@ init_game()
   init_pair(wood_pair, color_wood, COLOR_BLACK);
   init_pair(metal_pair, color_metal, COLOR_BLACK);
   init_pair(dark_cyan_pair, color_dark_cyan, COLOR_BLACK);
-  init_pair(white_on_grey_pair, COLOR_WHITE, color_grey);
-
-  init_pair(background_grey_pair, color_grey, color_grey);
 
   init_game_data();
 
