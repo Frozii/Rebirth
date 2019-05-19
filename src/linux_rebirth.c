@@ -137,11 +137,11 @@ enum
 } searchable_value_e;
 
 // NOTE(Rami): Implement
-enum
+typedef enum
 {
+  error_none,
   error_no_color_support
 } game_error_e;
-
 
 typedef enum
 {
@@ -151,7 +151,10 @@ typedef enum
 
 typedef struct
 {
+  game_error_e error;
+
   game_state_e state;
+
   game_event_e event;
   i32 event_turns_since_start;
   i32 event_turns_to_activate;
@@ -223,6 +226,22 @@ global player_t player;
 global u8 room[ROOM_WIDTH][ROOM_HEIGHT];
 global item_t items[ITEM_COUNT];
 global searchable_t searchables[SEARCHABLE_COUNT];
+
+internal i32
+exit_game()
+{
+  i32 result = EXIT_SUCCESS;
+
+  endwin();
+
+  if(game.error == error_no_color_support)
+  {
+    result = EXIT_FAILURE;
+    printf("Your terminal does not support colors.\nExiting..\n");
+  }
+
+  return result;
+}
 
 internal int
 is_item_pos(i32 x, i32 y)
@@ -2274,15 +2293,16 @@ run_game()
   }
 }
 
-internal i32
+internal void
 init_game()
 {
+  init_game_data();
+
   initscr();
 
   if(!has_colors())
   {
-    printf("Your terminal does not support colors.\n");
-    return 0;
+    game.error = error_no_color_support;
   }
 
   start_color();
@@ -2304,7 +2324,7 @@ init_game()
   init_color(color_wood, 627, 321, 176);
   init_color(color_metal, 780, 780, 780);
   init_color(color_grey, 200, 200, 200);
-  init_color(color_dark_cyan, 0, 300, 300);
+  init_color(color_dark_cyan, 0, 400, 400);
 
   init_pair(black_pair, COLOR_BLACK, COLOR_BLACK);
   init_pair(red_pair, COLOR_RED, COLOR_BLACK);
@@ -2318,22 +2338,15 @@ init_game()
   init_pair(wood_pair, color_wood, COLOR_BLACK);
   init_pair(metal_pair, color_metal, COLOR_BLACK);
   init_pair(dark_cyan_pair, color_dark_cyan, COLOR_BLACK);
-
-  init_game_data();
-
-  return 1;
 }
 
 i32
 main()
 {
-  if(init_game())
+  init_game();
+  if(!game.error)
   {
     run_game();
-    endwin();
-    return EXIT_SUCCESS;
   }
-
-  endwin();
-  return EXIT_FAILURE;
+  return exit_game();
 }
