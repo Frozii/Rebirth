@@ -1720,6 +1720,7 @@ player_keypress(i32 key)
     }
     else if(key == 'w')
     {
+      // Move to the item above
       if((player.inventory_item_selected - 1) < 1)
       {
         player.inventory_item_selected = player.inventory_item_count;
@@ -1731,6 +1732,7 @@ player_keypress(i32 key)
     }
     else if(key == 's')
     {
+      // Move to the item below
       if((player.inventory_item_selected + 1) > player.inventory_item_count)
       {
         player.inventory_item_selected = 1;
@@ -1768,7 +1770,6 @@ player_keypress(i32 key)
       }
     }
   }
-  
   else if(player.using_an_item)
   {
     if(key == 'w')
