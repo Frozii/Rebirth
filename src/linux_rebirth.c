@@ -50,13 +50,13 @@ enum
   magenta_pair,
   cyan_pair,
   white_pair,
-
+  
   stone_pair,
   wood_pair,
   metal_pair,
   light_pair,
   dark_cyan_pair,
-
+  
   color_pair_count
 } color_pair_e;
 
@@ -129,14 +129,6 @@ typedef enum
   state_outro
 } game_state_e;
 
-enum
-{
-  searchable_invalid,
-  searchable_not_searched,
-  searchable_searched
-} searchable_value_e;
-
-// NOTE(Rami): Implement
 typedef enum
 {
   error_none,
@@ -152,21 +144,21 @@ typedef enum
 typedef struct
 {
   game_error_e error;
-
+  
   game_state_e state;
-
+  
   game_event_e event;
   i32 event_turns_since_start;
   i32 event_turns_to_activate;
-
+  
   i32 menu_option_selected;
   i32 menu_option_count;
-
+  
   b32 first_door_open;
   b32 first_door_dihydrogen_monoxide_added;
   b32 first_door_cupric_sulfate_added;
   b32 first_door_spade_inserted;
-
+  
   b32 second_door_open;
   b32 second_door_key_inserted;
   b32 second_door_key_pried;
@@ -196,17 +188,17 @@ typedef struct
   i32 y;
   i32 turn;
   i32 input;
-
+  
   b32 using_an_item;
   b32 interacting;
   b32 inspecting;
   b32 picking_up;
-
+  
   item_t inventory[ITEM_COUNT];
   b32 inventory_enabled;
   i32 inventory_item_selected;
   i32 inventory_item_count;
-
+  
   i32 inventory_first_combination_item_num;
   i32 inventory_second_combination_item_num;
   item_e inventory_first_combination_item;
@@ -231,13 +223,17 @@ internal i32
 exit_game()
 {
   i32 result = EXIT_SUCCESS;
-
+  
   endwin();
-
-  if(game.error == error_no_color_support)
+  
+  if(game.error)
   {
     result = EXIT_FAILURE;
-    printf("Your terminal does not support colors.\nExiting..\n");
+
+    if(game.error == error_no_color_support)
+    {
+      printf("Your terminal does not support colors.\nExiting..\n");
+    }
   }
 
   return result;
@@ -247,7 +243,7 @@ internal int
 is_item_pos(i32 x, i32 y)
 {
   i32 result = 0;
-
+  
   for(i32 i = 0; i < ITEM_COUNT; i++)
   {
     if(items[i].active && !items[i].in_inventory)
@@ -259,7 +255,7 @@ is_item_pos(i32 x, i32 y)
       }
     }
   }
-
+  
   return result;
 }
 
@@ -285,7 +281,7 @@ get_item_glyph_for_item_type(i32 type)
     case item_bunsen_burner: result = glyph_bunsen_burner; break;
     case item_bronze_key: result = glyph_bronze_key; break;
   }
-
+  
   return result;
 }
 
@@ -300,7 +296,7 @@ get_next_free_item_id()
       free_id = items[i].id;
     }
   }
-
+  
   if(free_id == 0)
   {
     free_id = 1;
@@ -309,7 +305,7 @@ get_next_free_item_id()
   {
     free_id++;
   }
-
+  
   return free_id;
 }
 
@@ -343,7 +339,7 @@ equal_pos(i32 ax, i32 ay, i32 bx, i32 by)
   {
     return 1;
   }
-
+  
   return 0;
 }
 
@@ -368,7 +364,7 @@ internal i32
 add_item(i32 x, i32 y, item_e type)
 {
   i32 result = -1;
-
+  
   for(i32 i = 0; i < ITEM_COUNT; i++)
   {
     if(!items[i].active && !items[i].in_inventory)
@@ -385,7 +381,7 @@ add_item(i32 x, i32 y, item_e type)
       break;
     }
   }
-
+  
   return result;
 }
 
@@ -397,12 +393,12 @@ init_game_data()
   game.event_turns_to_activate = 2;
   game.menu_option_selected = 1;
   game.menu_option_count = 3;
-
+  
   // Player
   memset(&player, 0, sizeof(player_t));
   player.x = 3;
   player.y = 6;
-
+  
   // Room
   for(i32 x = 0; x < ROOM_WIDTH; x++)
   {
@@ -411,7 +407,7 @@ init_game_data()
       room[x][y] = glyph_stone;
     }
   }
-
+  
   // Floor
   for(i32 x = 3; x < ROOM_WIDTH - 3; x++)
   {
@@ -420,7 +416,7 @@ init_game_data()
       room[x][y] = glyph_floor;
     }
   }
-
+  
   room[2][4] = glyph_floor;
   room[7][1] = glyph_floor;
   room[8][1] = glyph_floor;
@@ -440,7 +436,7 @@ init_game_data()
   room[20][4] = glyph_floor;
   room[21][4] = glyph_floor;
   room[22][4] = glyph_floor;
-
+  
   room[7][1] = glyph_bookshelf;
   room[8][1] = glyph_bookshelf;
   room[9][1] = glyph_bookshelf;
@@ -449,26 +445,26 @@ init_game_data()
   room[4][2] = glyph_bookshelf;
   room[4][7] = glyph_bookshelf;
   room[5][7] = glyph_bookshelf;
-
+  
   room[7][8] = glyph_bookshelf;
   room[8][8] = glyph_bookshelf;
   room[9][8] = glyph_bookshelf;
   room[11][8] = glyph_bookshelf;
-
+  
   room[19][2] = glyph_crate;
   room[20][2] = glyph_crate;
   room[20][6] = glyph_crate;
   room[19][7] = glyph_crate;
   room[20][7] = glyph_crate;
-
+  
   room[18][2] = glyph_small_crate;
   room[19][6] = glyph_small_crate;
-
+  
   room[21][4] = glyph_stone_door;
   room[23][4] = glyph_wooden_door;
-
+  
   room[20][3] = glyph_open_chest;
-
+  
   room[10][4] = glyph_table;
   room[11][4] = glyph_table;
   room[12][4] = glyph_table;
@@ -477,22 +473,22 @@ init_game_data()
   room[11][5] = glyph_table;
   room[12][5] = glyph_table;
   room[13][5] = glyph_table;
-
+  
   room[11][3] = glyph_chair;
   room[10][6] = glyph_chair;
   room[14][3] = glyph_chair;
-
+  
   room[3][5] = glyph_torch;
   room[16][7] = glyph_torch;
-
+  
   room[2][4] = glyph_chain;
-
+  
   // Items
   memset(&items, 0, sizeof(items));
   add_item(13, 4, item_metal_spade);
   add_item(12, 5, item_bunsen_burner);
   add_item(10, 4, item_empty_vial);
-
+  
   // Searchables
   memset(&searchables, 0, sizeof(searchables));
   add_searchable(4, 7, item_knife, item_none, item_none);
@@ -535,36 +531,36 @@ main_menu()
   mvprintw(8, 10, "| .  / |  __| |  _  \\  | |  | .  /   | |  |  _  |");
   mvprintw(9, 10, "| |\\ \\ | |___ | |_| / _| |_ | |\\ \\   | |  | | | |");
   mvprintw(10, 10, "\\_| \\_|\\____/ \\____/  \\___/ \\_| \\_|  \\_/  \\_| |_/");
-
+  
   if(game.menu_option_selected == 1)
   {
     attron(COLOR_PAIR(cyan_pair));
     mvprintw(14, 10, "Play");
     attroff(COLOR_PAIR(cyan_pair));
-
+    
     mvprintw(15, 10, "Controls");
     mvprintw(16, 10, "Quit");
   }
   else if(game.menu_option_selected == 2)
   {
     mvprintw(14, 10, "Play");
-
+    
     attron(COLOR_PAIR(cyan_pair));
     mvprintw(15, 10, "Controls");
     attroff(COLOR_PAIR(cyan_pair));
-
+    
     mvprintw(16, 10, "Quit");
   }
   else
   {
     mvprintw(14, 10, "Play");
     mvprintw(15, 10, "Controls");
-
+    
     attron(COLOR_PAIR(cyan_pair));
     mvprintw(16, 10, "Quit");
     attroff(COLOR_PAIR(cyan_pair));
   }
-
+  
   i32 input = getch();
   switch(input)
   {
@@ -585,7 +581,7 @@ main_menu()
         game.state = state_quit;
       }
     } break;
-
+    
     case key_up_arrow: move_menu_option_selected_up(); break;
     case key_down_arrow: move_menu_option_selected_down(); break;
     default: break;
@@ -610,7 +606,7 @@ is_valid_input(i32 key)
   {
     return 1;
   }
-
+  
   return 0;
 }
 
@@ -623,18 +619,18 @@ get_item_type_for_inventory_position(i32 i)
 internal i32
 is_traversable(i32 x, i32 y)
 {
-  #if REBIRTH_SLOW
+#if REBIRTH_SLOW
   i32 result = 1;
-  #else
+#else
   i32 result = 0;
-  #endif
+#endif
   if(room[x][y] == glyph_floor ||
      room[x][y] == glyph_stone_door_open ||
      room[x][y] == glyph_wooden_door_open)
   {
     result = 1;
   }
-
+  
   return result;
 }
 
@@ -648,7 +644,7 @@ get_item_type_for_pos(i32 x, i32 y)
       return items[i].type;
     }
   }
-
+  
   return item_none;
 }
 
@@ -662,7 +658,7 @@ get_item_pos_for_id(i32 id)
       return i;
     }
   }
-
+  
   return -1;
 }
 
@@ -699,7 +695,7 @@ clear_message()
 {
   char clear[MAX_LENGTH] = {0};
   memset(clear, ' ', sizeof(clear) - 1);
-
+  
   for(i32 i = 0; i < 6; i++)
   {
     mvprintw(15 + i, 0, clear);
@@ -710,12 +706,12 @@ internal void
 render_message(char *msg, ...)
 {
   char formatted_message[MAX_LENGTH];
-
+  
   va_list arg_list;
   va_start(arg_list, msg);
   vsnprintf(formatted_message, sizeof(formatted_message), msg, arg_list);
   va_end(arg_list);
-
+  
   mvprintw(15, 0, "> %s", formatted_message);
 }
 
@@ -723,7 +719,7 @@ internal void
 remove_inventory_item(i32 selected)
 {
   i32 id_to_remove = player.inventory[selected - 1].id;
-
+  
   // Remove item from game
   for(i32 i = 0; i < ITEM_COUNT; i++)
   {
@@ -740,7 +736,7 @@ remove_inventory_item(i32 selected)
       break;
     }
   }
-
+  
   // Reorder data
   for(i32 i = 1; i < ITEM_COUNT; i++)
   {
@@ -749,7 +745,7 @@ remove_inventory_item(i32 selected)
       if(!items[i - 1].active && !items[i - 1].in_inventory)
       {
         items[i - 1] = items[i];
-
+        
         items[i].active = false;
         items[i].in_inventory = false;
         items[i].type = item_none;
@@ -761,7 +757,7 @@ remove_inventory_item(i32 selected)
       }
     }
   }
-
+  
   // Remove item from inventory
   player.inventory[selected - 1].active = false;
   player.inventory[selected - 1].in_inventory = false;
@@ -771,7 +767,7 @@ remove_inventory_item(i32 selected)
   player.inventory[selected - 1].x = 0;
   player.inventory[selected - 1].y = 0;
   player.inventory[selected - 1].glyph = glyph_blank;
-
+  
   // Reorder data
   for(i32 i = 1; i < ITEM_COUNT; i++)
   {
@@ -780,7 +776,7 @@ remove_inventory_item(i32 selected)
       if(!player.inventory[i - 1].in_inventory)
       {
         player.inventory[i - 1] = player.inventory[i];
-
+        
         player.inventory[i].active = false;
         player.inventory[i].in_inventory = false;
         player.inventory[i].type = item_none;
@@ -792,7 +788,7 @@ remove_inventory_item(i32 selected)
       }
     }
   }
-
+  
   // Adjust highlighter
   if((player.inventory_item_selected - 1) >= 1)
   {
@@ -804,7 +800,7 @@ internal void
 drop_inventory_item(i32 x, i32 y, i32 selected)
 {
   i32 id_to_enable = player.inventory[selected - 1].id;
-
+  
   for(i32 i = 0; i < ITEM_COUNT; i++)
   {
     if(items[i].id == id_to_enable)
@@ -815,7 +811,7 @@ drop_inventory_item(i32 x, i32 y, i32 selected)
       items[i].y = y;
     }
   }
-
+  
   player.inventory[selected - 1].active = false;
   player.inventory[selected - 1].in_inventory = false;
   player.inventory[selected - 1].type = item_none;
@@ -824,7 +820,7 @@ drop_inventory_item(i32 x, i32 y, i32 selected)
   player.inventory[selected - 1].x = 0;
   player.inventory[selected - 1].y = 0;
   player.inventory[selected - 1].glyph = glyph_blank;
-
+  
   for(i32 i = 1; i < ITEM_COUNT; i++)
   {
     if(player.inventory[i].in_inventory)
@@ -832,7 +828,7 @@ drop_inventory_item(i32 x, i32 y, i32 selected)
       if(!player.inventory[i - 1].in_inventory)
       {
         player.inventory[i - 1] = player.inventory[i];
-
+        
         player.inventory[i].active = false;
         player.inventory[i].in_inventory = false;
         player.inventory[i].type = item_none;
@@ -844,7 +840,7 @@ drop_inventory_item(i32 x, i32 y, i32 selected)
       }
     }
   }
-
+  
   if((player.inventory_item_selected - 1) >= 1)
   {
     player.inventory_item_selected--;
@@ -879,7 +875,7 @@ render_room()
         mvprintw(y, x, " ");
       }
     }
-
+    
     clear_message();
     render_message("For a moment the torches seem to be snuffed out..\n  You get an uneasy feeling..");
   }
@@ -891,9 +887,9 @@ render_room()
       {
         char c[2] = {0};
         c[0] = room[x][y];
-
+        
         i32 pair = white_pair;
-
+        
         if(room[x][y] == glyph_stone ||
            room[x][y] == glyph_floor)
         {
@@ -924,7 +920,7 @@ render_room()
           attron(COLOR_PAIR(yellow_pair));
           pair = yellow_pair;
         }
-
+        
         mvprintw(y, x, c);
         attroff(COLOR_PAIR(pair));
       }
@@ -951,22 +947,24 @@ render_player()
 internal i32
 is_searchable(i32 x, i32 y)
 {
-  i32 result = searchable_invalid;
+  i32 result = -1;
   for(i32 i = 0; i < SEARCHABLE_COUNT; i++)
   {
     if(equal_pos(x, y, searchables[i].x, searchables[i].y))
     {
       if(searchables[i].searched)
       {
-        result = searchable_searched;
+        result = 0;
       }
       else
       {
-        result = searchable_not_searched;
+        result = 1;
       }
+
+      break;
     }
   }
-
+  
   return result;
 }
 
@@ -981,21 +979,21 @@ push_loot_message(char **found_loot_names)
       names_to_append++;
     }
   }
-
+  
   if(names_to_append == 1)
   {
     render_message("You start searching..\n  you find something:\n  %s.",
-                  found_loot_names[0]);
+                   found_loot_names[0]);
   }
   else if(names_to_append == 2)
   {
     render_message("You start searching..\n  you find a couple things:\n  %s,\n  %s.",
-                  found_loot_names[0], found_loot_names[1]);
+                   found_loot_names[0], found_loot_names[1]);
   }
   else if(names_to_append == 3)
   {
     render_message("You start searching..\n  you find multiple things:\n  %s,\n  %s,\n  %s.",
-                  found_loot_names[0], found_loot_names[1], found_loot_names[2]);
+                   found_loot_names[0], found_loot_names[1], found_loot_names[2]);
   }
 }
 
@@ -1012,13 +1010,13 @@ add_searchable_loot(i32 x, i32 y)
         found_loot_names[i] = malloc(sizeof(char) * GENERAL_LENGTH);
         *found_loot_names[i] = glyph_blank;
       }
-
+      
       for(i32 loot_index = 0; loot_index < LOOT_COUNT; loot_index++)
       {
         if(searchables[i].loot[loot_index])
         {
           get_item_name_for_item_type(found_loot_names[loot_index], searchables[i].loot[loot_index]);
-
+          
           i32 item_id = add_item(0, 0, searchables[i].loot[loot_index]);
           i32 index = get_item_pos_for_id(item_id);
           items[index].active = false;
@@ -1026,14 +1024,14 @@ add_searchable_loot(i32 x, i32 y)
           add_inventory_item(items[index]);
         }
       }
-
+      
       push_loot_message(found_loot_names);
-
+      
       for(i32 i = 0; i < LOOT_COUNT; i++)
       {
         free(found_loot_names[i]);
       }
-
+      
       searchables[i].searched = true;
       return;
     }
@@ -1057,7 +1055,7 @@ pick_up(i32 x, i32 y)
       }
     }
   }
-
+  
   switch(room[x][y])
   {
     case glyph_stone: render_message("Perhaps if I were Hercules.."); break;
@@ -1078,13 +1076,13 @@ use_item(i32 x, i32 y)
   render_message("What item do you want to use? (enter inventory character)");
   i32 input = getch() - ASCII_LOWERCASE_START;
   clear_message();
-
+  
   if(input >= 0 && input <= ITEM_COUNT)
   {
     if(player.inventory[input - 1].in_inventory)
     {
       i32 item_type = get_item_type_for_inventory_position(input);
-
+      
       if(room[x][y] == glyph_stone_door ||
          room[x][y] == glyph_stone_door_open)
       {
@@ -1205,7 +1203,7 @@ use_item(i32 x, i32 y)
         {
           if(is_item_pos(x, y))
           {
-            render_message("You don't want to burn it because there's something on the table.");
+            render_message("You don't want to burn it because there's something on it");
           }
           else
           {
@@ -1273,34 +1271,33 @@ internal void
 interact(i32 x, i32 y)
 {
   i32 result = is_searchable(x, y);
-  if(result == searchable_not_searched)
+  if(result == 1)
   {
     add_searchable_loot(x, y);
     return;
   }
-  else if(result == searchable_searched)
+  else if(result == 0)
   {
     switch(room[x][y])
     {
-      case glyph_bookshelf: render_message("You search the crate again..\n  You don't find anything interesting."); break;
+      case glyph_bookshelf: render_message("You search the bookshelf again..\n  You don't find anything interesting."); break;
       case glyph_crate: render_message("You search the crate again..\n  You don't find anything interesting."); break;
     }
-
+    
     return;
   }
-
+  
   if(room[x][y] == glyph_stone_door)
   {
     if(game.first_door_dihydrogen_monoxide_added)
     {
       render_message("You pull on the spade..\n  It doesn't seem to budge so you pull hard on it..\n  The door slowly opens!");
       player.x--;
-
+      
       room[20][4] = glyph_stone_door_open;
       room[21][4] = glyph_floor;
 
       game.event = event_blackout;
-
       game.first_door_open = true;
     }
     else
@@ -1315,7 +1312,7 @@ interact(i32 x, i32 y)
         {
           render_message("You try to open the door using the spade as leverage..\n  The spade falls out since there's nothing actually holding it in place.\n  You pick it back up.");
           game.first_door_spade_inserted = false;
-
+          
           i32 item_id = add_item(0, 0, item_metal_spade_no_handle);
           i32 index = get_item_pos_for_id(item_id);
           items[index].active = false;
@@ -1328,7 +1325,7 @@ interact(i32 x, i32 y)
         }
       }
     }
-
+    
     return;
   }
   else if(room[x][y] == glyph_wooden_door)
@@ -1336,19 +1333,18 @@ interact(i32 x, i32 y)
     if(game.second_door_key_inserted)
     {
       render_message("You twist the bronze key in the lock..\n  The door becomes unlocked and you open it.");
-
       room[23][4] = glyph_wooden_door_open;
-
+      
       game.second_door_open = true;
     }
     else
     {
       render_message("The door won't budge.");
     }
-
+    
     return;
   }
-
+  
   switch(room[x][y])
   {
     case glyph_bookshelf: render_message("You search the bookshelf..\n  you find nothing useful."); break;
@@ -1461,12 +1457,12 @@ inspect(i32 x, i32 y)
             }
           } break;
         }
-
+        
         return;
       }
     }
   }
-
+  
   switch(room[x][y])
   {
     case glyph_stone: render_message("A stone surface, looks old and covered in moss."); break;
@@ -1533,15 +1529,15 @@ combine(item_e first_type, item_e second_type)
 {
   char first_name[GENERAL_LENGTH];
   char second_name[GENERAL_LENGTH];
-
+  
   get_item_name_for_item_type(first_name, first_type);
   get_item_name_for_item_type(second_name, second_type);
-
+  
   if((first_type == item_metal_spade && second_type == item_bunsen_burner) ||
      (first_type == item_bunsen_burner && second_type == item_metal_spade))
   {
     render_message("You use the bunsen burner to burn the handle away from the spade..\n  You are left with a metal spade that has no handle.", first_name, second_name);
-
+    
     if(first_type == item_metal_spade)
     {
       remove_inventory_item(player.inventory_first_combination_item_num);
@@ -1550,7 +1546,7 @@ combine(item_e first_type, item_e second_type)
     {
       remove_inventory_item(player.inventory_second_combination_item_num);
     }
-
+    
     i32 item_id = add_item(0, 0, item_metal_spade_no_handle);
     i32 index = get_item_pos_for_id(item_id);
     items[index].active = false;
@@ -1574,7 +1570,7 @@ combine(item_e first_type, item_e second_type)
       {
         render_message("You pour the dihydrogen monoxide in the tin..");
       }
-
+      
       if(first_type == item_dihydrogen_monoxide)
       {
         remove_inventory_item(player.inventory_first_combination_item_num);
@@ -1583,7 +1579,7 @@ combine(item_e first_type, item_e second_type)
       {
         remove_inventory_item(player.inventory_second_combination_item_num);
       }
-
+      
       game.second_door_dihydrogen_monoxide_added = true;
     }
   }
@@ -1598,7 +1594,7 @@ combine(item_e first_type, item_e second_type)
     {
       render_message("You pour the gypsum in the tin.");
     }
-
+    
     if(first_type == item_gypsum)
     {
       remove_inventory_item(player.inventory_first_combination_item_num);
@@ -1607,7 +1603,7 @@ combine(item_e first_type, item_e second_type)
     {
       remove_inventory_item(player.inventory_second_combination_item_num);
     }
-
+    
     game.second_door_gypsum_added = true;
   }
   else if((first_type == item_tin && second_type == item_cupric_ore_powder) ||
@@ -1623,7 +1619,7 @@ combine(item_e first_type, item_e second_type)
       {
         remove_inventory_item(player.inventory_second_combination_item_num);
       }
-
+      
       render_message("You pour the cupric ore powder into the impression of the key.");
       game.second_door_cupric_ore_powder_added = true;
     }
@@ -1645,7 +1641,7 @@ combine(item_e first_type, item_e second_type)
       {
         remove_inventory_item(player.inventory_second_combination_item_num);
       }
-
+      
       render_message("You pour the tin ore powder into the impression of the key.");
       game.second_door_tin_ore_powder_added = true;
     }
@@ -1674,13 +1670,13 @@ combine(item_e first_type, item_e second_type)
     if(game.second_door_key_complete)
     {
       render_message("You pry the duplicate bronze key out of the tin.");
-
+      
       i32 item_id = add_item(0, 0, item_bronze_key);
       i32 index = get_item_pos_for_id(item_id);
       items[index].active = false;
       items[index].in_inventory = true;
       add_inventory_item(items[index]);
-
+      
       game.second_door_key_pried = true;
     }
     else
@@ -1692,7 +1688,7 @@ combine(item_e first_type, item_e second_type)
   {
     render_message("Nothing interesting happens.");
   }
-
+  
   reset_inventory_selections();
 }
 
@@ -1704,7 +1700,7 @@ did_escape()
   {
     result = 1;
   }
-
+  
   return result;
 }
 
@@ -1713,7 +1709,7 @@ player_keypress(i32 key)
 {
   i32 player_new_x = player.x;
   i32 player_new_y = player.y;
-
+  
   if(player.inventory_enabled)
   {
     if(key == 'b')
@@ -1758,7 +1754,7 @@ player_keypress(i32 key)
       else if(player.inventory_second_combination_item == item_none)
       {
         player.inventory_second_combination_item_num = player.inventory_item_selected;
-
+        
         if(player.inventory_first_combination_item_num == player.inventory_second_combination_item_num)
         {
           render_message("Nothing interesting happens.");
@@ -1772,7 +1768,7 @@ player_keypress(i32 key)
       }
     }
   }
-
+  
   else if(player.using_an_item)
   {
     if(key == 'w')
@@ -1791,7 +1787,7 @@ player_keypress(i32 key)
     {
       player_new_x++;
     }
-
+    
     use_item(player_new_x, player_new_y);
     player.using_an_item = false;
   }
@@ -1813,7 +1809,7 @@ player_keypress(i32 key)
     {
       player_new_x++;
     }
-
+    
     pick_up(player_new_x, player_new_y);
     player.picking_up = false;
   }
@@ -1835,7 +1831,7 @@ player_keypress(i32 key)
     {
       player_new_x++;
     }
-
+    
     interact(player_new_x, player_new_y);
     player.interacting = false;
   }
@@ -1857,7 +1853,7 @@ player_keypress(i32 key)
     {
       player_new_x++;
     }
-
+    
     inspect(player_new_x, player_new_y);
     player.inspecting = false;
   }
@@ -1918,16 +1914,16 @@ player_keypress(i32 key)
         render_message("Your inventory is empty.");
       }
     }
-
+    
     if(is_traversable(player_new_x, player_new_y))
     {
       player.x = player_new_x;
       player.y = player_new_y;
     }
-
+    
     player.turn++;
   }
-
+  
   if(did_escape())
   {
     clear();
@@ -1940,17 +1936,17 @@ update_input()
 {
   player.input = getch();
   clear_message();
-
+  
   if(game.event)
   {
     if(game.event_turns_since_start >= game.event_turns_to_activate)
     {
       game.event = event_none;
     }
-
+    
     game.event_turns_since_start++;
   }
-
+  
   if(is_valid_input(player.input))
   {
     if(player.input == 'q')
@@ -1969,18 +1965,18 @@ update_input()
 internal void
 render_ui()
 {
-  #if REBIRTH_SLOW
+#if REBIRTH_SLOW
   mvprintw(11, 0, "Turn: %d", player.turn);
-
+  
   mvprintw(12, 0, "x: %d", player.x);
   mvprintw(13, 0, "y: %d", player.y);
-
+  
   i32 debug_x = 0;
   i32 debug_y = 22;
-
+  
   mvprintw(debug_y, debug_x, "player x: %d\n", player.x);
   mvprintw(debug_y + 1, debug_x, "player y: %d\n", player.y);
-
+  
   for(i32 i = 0; i < ITEM_COUNT; i++)
   {
     mvprintw(debug_y + 3, debug_x, "active %d\n", items[i].active);
@@ -1991,13 +1987,13 @@ render_ui()
     mvprintw(debug_y + 8, debug_x, "x %d\n", items[i].x);
     mvprintw(debug_y + 9, debug_x, "y %d\n", items[i].y);
     mvprintw(debug_y + 10, debug_x, "glyph %c\n", items[i].glyph);
-
+    
     debug_y = debug_y + 9;
   }
-
+  
   debug_y = 22;
   debug_x = 60;
-
+  
   for(i32 i = 0; i < ITEM_COUNT; i++)
   {
     mvprintw(debug_y, debug_x, "active %d\n", player.inventory[i].active);
@@ -2008,15 +2004,15 @@ render_ui()
     mvprintw(debug_y + 5, debug_x, "x %d\n", player.inventory[i].x);
     mvprintw(debug_y + 6, debug_x, "y %d\n", player.inventory[i].y);
     mvprintw(debug_y + 7, debug_x, "glyph %c\n", player.inventory[i].glyph);
-
+    
     debug_y = debug_y + 9;
   }
-
+  
   mvprintw(1, 86, "first_door_open: %d", game.first_door_open);
   mvprintw(2, 86, "first_door_dihydrogen_monoxide_added: %d", game.first_door_dihydrogen_monoxide_added);
   mvprintw(3, 86, "first_door_cupric_sulfate_added: %d", game.first_door_cupric_sulfate_added);
   mvprintw(4, 86, "first_door_spade_inserted: %d", game.first_door_spade_inserted);
-
+  
   mvprintw(6, 86, "second_door_open: %d", game.second_door_open);
   mvprintw(7, 86, "second_door_key_pried: %d", game.second_door_key_pried);
   mvprintw(8, 86, "second_door_key_complete: %d", game.second_door_key_complete);
@@ -2025,14 +2021,14 @@ render_ui()
   mvprintw(11, 86, "second_door_key_imprint_made: %d", game.second_door_key_imprint_made);
   mvprintw(12, 86, "second_door_gypsum_added: %d", game.second_door_gypsum_added);
   mvprintw(13, 86, "second_door_dihydrogen_monoxide_added: %d", game.second_door_dihydrogen_monoxide_added);
-  #endif
+#endif
 }
 
 internal void
 render_inventory()
 {
   mvprintw(0, 49, "Inventory");
-
+  
   mvhline(1, 26, ACS_HLINE, 83 - 26);
   mvhline(12, 26, ACS_HLINE, 83 - 26);
   mvvline(1, 26, ACS_VLINE, 12 - 1);
@@ -2041,31 +2037,31 @@ render_inventory()
   mvaddch(12, 26, ACS_LLCORNER);
   mvaddch(1, 83, ACS_URCORNER);
   mvaddch(12, 83, ACS_LRCORNER);
-
+  
   i32 count = 0;
   i32 start_x = 28;
   i32 start_y = 2;
   i32 x = start_x;
   i32 y = start_y;
-
+  
   char clear[28] = {0};
   memset(clear, ' ', sizeof(clear) - 1);
-
+  
   for(i32 i = 0; i < ITEM_COUNT; i++)
   {
     mvprintw(y, x, clear);
     y++;
-
+    
     if(y > 11)
     {
       x += 28;
       y = 2;
     }
   }
-
+  
   x = start_x;
   y = start_y;
-
+  
   for(i32 i = 0; i < ITEM_COUNT; i++)
   {
     if(player.inventory[i].in_inventory)
@@ -2088,7 +2084,7 @@ render_inventory()
       {
         mvprintw(y, x, "%c: %s", 96 + count, player.inventory[i].name);
       }
-
+      
       y++;
       if(y > 11)
       {
@@ -2097,7 +2093,7 @@ render_inventory()
       }
     }
   }
-
+  
   player.inventory_item_count = count;
   if(!player.inventory_item_count)
   {
@@ -2116,24 +2112,24 @@ controls()
   mvprintw(8, 10, "| |     | | | | | . ` |   | |   |    /  | | | | | |    \\____  \\");
   mvprintw(9, 10, "| \\__/\\ | |_| | | |\\  |   | |   | |\\ \\  | |_| | | |___ _____| |");
   mvprintw(10, 10, "\\_____/ \\_____/ \\_/ \\_/   \\_/   \\_/ \\_/ \\_____/ \\____/ \\______/");
-
+  
   mvprintw(14, 10, "w: Move up");
   mvprintw(15, 10, "s: Move down");
   mvprintw(16, 10, "a: Move left");
   mvprintw(17, 10, "d: Move right");
-
+  
   mvprintw(19, 10, "p: Pickup item");
   mvprintw(20, 10, "o: Inspect");
   mvprintw(21, 10, "i: Interact");
   mvprintw(22, 10, "u: Use item");
-
+  
   mvprintw(24, 10, "b: Toggle inventory");
   mvprintw(25, 10, "c: Choose two inventory items to be combined");
-
+  
   mvprintw(27, 10, "q: Quit back to main menu");
-
+  
   mvprintw(31, 10, "[Enter] Return");
-
+  
   i32 input = getch();
   if(input == key_enter)
   {
@@ -2150,9 +2146,9 @@ intro()
   {
     mvprintw(2, 10, "Eyes are Open");
     mvprintw(3, 10, "_____________");
-
+    
     mvprintw(2, 28, "[Enter] Continue  [S] Skip");
-
+    
     if(paragraphs == 1)
     {
       mvprintw(5, 10, "You awake, eyes wide open staring infont of you, not sure if in a");
@@ -2161,14 +2157,14 @@ intro()
       mvprintw(8, 10, "nothing comes to mind. It's almost like your brain doesn't allow you");
       mvprintw(9, 10, "to remember.");
     }
-
+    
     if(paragraphs == 2)
     {
       mvprintw(11, 10, "You seem to be wearing some slightly tattered and worn clotches. There");
       mvprintw(12, 10, "doesn't to be anything valuable on you at the moment either. At least");
       mvprintw(13, 10, "you are feeling well-rested for now.");
     }
-
+    
     i32 input = getch();
     if(input == key_enter)
     {
@@ -2179,7 +2175,7 @@ intro()
       break;
     }
   }
-
+  
   clear();
   game.state = state_play;
 }
@@ -2192,9 +2188,9 @@ outro()
   {
     mvprintw(2, 10, "Black and White");
     mvprintw(3, 10, "_______________");
-
+    
     mvprintw(2, 30, "[Enter] Continue  [S] Skip");
-
+    
     if(paragraphs == 1)
     {
       mvprintw(5, 10, "You open the door and see.. nothing but a pitch blackness before you.");
@@ -2202,7 +2198,7 @@ outro()
       mvprintw(7, 10, "light your way out. Finally, you can make out the start of a wide cor-");
       mvprintw(8, 10, "ridor. You start walking in the center of it..");
     }
-
+    
     if(paragraphs == 2)
     {
       mvprintw(10, 10, "As you walk, the surrounding darkness and silence starts to feel more");
@@ -2210,7 +2206,7 @@ outro()
       mvprintw(12, 10, "which by now seem louder than the blaze of the torch. You squint your");
       mvprintw(13, 10, "eyes.. and manage to make out a shape.");
     }
-
+    
     if(paragraphs == 3)
     {
       mvprintw(15, 10, "The shape gradually becomes more visible and a man is revealed.");
@@ -2222,7 +2218,7 @@ outro()
       mvprintw(21, 10, "held in place by a strap that spans across his chest in the shape of");
       mvprintw(22, 10, "an x.");
     }
-
+    
     if(paragraphs == 4)
     {
       mvprintw(24, 10, "You quickly think about why this person is out here in the darkness ju-");
@@ -2231,7 +2227,7 @@ outro()
       mvprintw(27, 10, "decide to open your mouth to ask the person who he is and why you are");
       mvprintw(28, 10, "here but to your surprise nothing comes out.");
     }
-
+    
     if(paragraphs == 5)
     {
       mvprintw(30, 10, "You attempt to move but you can't do that either, you feel paralyzed,");
@@ -2242,7 +2238,7 @@ outro()
       mvprintw(35, 10, "His voice clearly reaches you and you hear him say \"Looks like you made");
       mvprintw(36, 10, "it\". Suddenly your vision starts blurring and everything fades to black..");
     }
-
+    
     i32 input = getch();
     if(input == key_enter)
     {
@@ -2253,7 +2249,7 @@ outro()
       break;
     }
   }
-
+  
   clear();
   init_game_data();
   game.state = state_main_menu;
@@ -2279,7 +2275,7 @@ run_game()
       render_player();
       render_ui();
       render_inventory();
-
+      
       update_input();
     }
     else if(game.state == state_controls)
@@ -2297,21 +2293,21 @@ internal void
 init_game()
 {
   init_game_data();
-
+  
   initscr();
-
+  
   if(!has_colors())
   {
     game.error = error_no_color_support;
   }
-
+  
   start_color();
   curs_set(0);        // enable/disable cursor
   keypad(stdscr, 1);  // enable/disable F1, F2, arrow keys etc.
   noecho();           // getch character will not be printed on screen
   nodelay(stdscr, 0); // will getch block execution
   cbreak();           // getch will return user input immediately
-
+  
   init_color(COLOR_BLACK, 0, 0, 0);
   init_color(COLOR_RED, 1000, 0, 0);
   init_color(COLOR_GREEN, 0, 1000, 0);
@@ -2325,7 +2321,7 @@ init_game()
   init_color(color_metal, 780, 780, 780);
   init_color(color_grey, 200, 200, 200);
   init_color(color_dark_cyan, 0, 400, 400);
-
+  
   init_pair(black_pair, COLOR_BLACK, COLOR_BLACK);
   init_pair(red_pair, COLOR_RED, COLOR_BLACK);
   init_pair(green_pair, COLOR_GREEN, COLOR_BLACK);
