@@ -2113,20 +2113,20 @@ controls()
   mvprintw(9, 10, "| \\__/\\ | |_| | | |\\  |   | |   | |\\ \\  | |_| | | |___ _____| |");
   mvprintw(10, 10, "\\_____/ \\_____/ \\_/ \\_/   \\_/   \\_/ \\_/ \\_____/ \\____/ \\______/");
   
-  mvprintw(14, 10, "w: Move up");
-  mvprintw(15, 10, "s: Move down");
-  mvprintw(16, 10, "a: Move left");
-  mvprintw(17, 10, "d: Move right");
+  mvprintw(14, 10, "W: move up");
+  mvprintw(15, 10, "S: move down");
+  mvprintw(16, 10, "A: move left");
+  mvprintw(17, 10, "D: move right");
   
-  mvprintw(19, 10, "p: Pickup item");
-  mvprintw(20, 10, "o: Inspect");
-  mvprintw(21, 10, "i: Interact");
-  mvprintw(22, 10, "u: Use item");
+  mvprintw(19, 10, "U: use item");
+  mvprintw(20, 10, "I: interact");
+  mvprintw(21, 10, "O: inspect");
+  mvprintw(22, 10, "P: pickup item");
   
-  mvprintw(24, 10, "b: Toggle inventory");
-  mvprintw(25, 10, "c: Choose two inventory items to be combined");
+  mvprintw(24, 10, "B: toggle inventory");
+  mvprintw(25, 10, "C: choose two inventory items to be combined");
   
-  mvprintw(27, 10, "q: Quit back to main menu");
+  mvprintw(27, 10, "Q: quit back to main menu");
   
   mvprintw(31, 10, "[Enter] Return");
   
