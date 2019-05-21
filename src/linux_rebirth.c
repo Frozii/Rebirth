@@ -1079,15 +1079,12 @@ pick_up(i32 x, i32 y)
   
   switch(room[x][y])
   {
-    case glyph_stone: render_message("Perhaps if I were Hercules.."); break;
+    // NOTE(Rami): CONTINUE
     case glyph_floor: render_message("There's nothing there to pick up."); break;
-    case glyph_bookshelf: render_message("It would probably break and collapse on me if I moved it too much."); break;
-    case glyph_crate: render_message("Might be a good workout but hardly a priority."); break;
-    case glyph_small_crate: render_message("Might be a good workout but hardly a priority."); break;
-    case glyph_stone_door: render_message("If only it was that simple.."); break;
-    case glyph_wooden_door: render_message("If only it was that simple.."); break;
-    case glyph_open_chest: render_message("Might be a good workout but hardly a priority."); break;
-    default: render_message("You don't see any reason to pick that up.");
+    case glyph_stone_door: render_message("If only it was that simple."); break;
+    case glyph_wooden_door: render_message("If only it was that simple."); break;
+    case glyph_torch: render_message("You don't have a reason to pick that up."); break;
+    default: render_message("You can't pick that up.");
   }
 }
 
@@ -1106,13 +1103,25 @@ use_item(i32 x, i32 y)
       if(room[x][y] == glyph_stone_door ||
          room[x][y] == glyph_stone_door_open)
       {
-        if(game.first_door_spade_inserted)
+        if(item->type == item_bunsen_burner)
+        {
+          if(item->use_count < item->max_use_count)
+          {
+            render_message("You use the bunsen burner on the stone door..\n  It barely even gets warm.");
+            item->use_count++;
+          }
+          else
+          {
+            render_message("The bunsen burner doesn't seem to create a flame anymore..\n  You try adjusting the valve on the side of it but nothing happens.");
+          }
+        }
+        else if(game.first_door_spade_inserted)
         {
           if(game.first_door_cupric_sulfate_added)
           {
             if(game.first_door_dihydrogen_monoxide_added)
             {
-              render_message("You don't have a reason to do that.");
+              render_message("Nothing interesting happens.");
             }
             else
             {
@@ -1125,7 +1134,7 @@ use_item(i32 x, i32 y)
               }
               else
               {
-                render_message("You don't have a reason to do that.");
+                render_message("Nothing interesting happens.");
               }
             }
           }
@@ -1139,7 +1148,7 @@ use_item(i32 x, i32 y)
             }
             else
             {
-              render_message("You don't have a reason to do that.");
+              render_message("Nothing interesting happens.");
             }
           }
         }
@@ -1153,7 +1162,7 @@ use_item(i32 x, i32 y)
           }
           else
           {
-            render_message("You don't have a reason to do that.");
+            render_message("Nothing interesting happens.");
           }
         }
       }
@@ -1321,9 +1330,33 @@ use_item(i32 x, i32 y)
           render_message("Nothing interesting happens.");
         }
       }
-      else
+      else if(room[x][y] == glyph_stone ||
+              room[x][y] == glyph_floor ||
+              room[x][y] == glyph_torch)
       {
-        render_message("Nothing interesting happens.");
+        if(item->type == item_bunsen_burner)
+        {
+          if(room[x][y] == glyph_stone)
+          {
+            render_message("Seems like a waste to use it on a wall.");
+          }
+          else if(room[x][y] == glyph_floor)
+          {
+            render_message("Seems like a waste to use it on a floor.");
+          }
+          else
+          {
+            if(item->use_count < item->max_use_count)
+            {
+              render_message("You use the bunsen burner on the torch..\n  It nurtures the fire and it slightly grows stronger.");
+              item->use_count++;
+            }
+            else
+            {
+              render_message("The bunsen burner doesn't seem to create a flame anymore..\n  You try adjusting the valve on the side of it but nothing happens.");
+            }
+          }
+        }
       }
     }
     else
@@ -1357,64 +1390,66 @@ interact(i32 x, i32 y)
     return;
   }
   
-  if(room[x][y] == glyph_stone_door)
+  if(room[x][y] == glyph_stone_door ||
+     room[x][y] == glyph_wooden_door)
   {
-    if(game.first_door_dihydrogen_monoxide_added)
+    if(room[x][y] == glyph_stone_door)
     {
-      render_message("You pull on the spade..\n  It doesn't seem to budge so you pull hard on it..\n  The door slowly opens!");
-      player.x--;
-      
-      room[20][4] = glyph_stone_door_open;
-      room[21][4] = glyph_floor;
-
-      game.event = event_blackout;
-      game.first_door_open = true;
-    }
-    else
-    {
-      if(game.first_door_cupric_sulfate_added)
+      if(game.first_door_dihydrogen_monoxide_added)
       {
-        render_message("Probably shouldn't move the spade because of the ingrients on it.");
+        render_message("You pull on the spade..\n  It doesn't seem to budge so you pull hard on it..\n  The door slowly opens!");
+        player.x--;
+        
+        room[20][4] = glyph_stone_door_open;
+        room[21][4] = glyph_floor;
+
+        game.event = event_blackout;
+        game.first_door_open = true;
       }
       else
       {
-        if(game.first_door_spade_inserted)
+        if(game.first_door_cupric_sulfate_added)
         {
-          render_message("You try to open the door using the spade as leverage..\n  The spade falls out since there's nothing actually holding it in place.\n  You pick it back up.");
-          game.first_door_spade_inserted = false;
-          
-          i32 item_id = add_item(0, 0, item_metal_spade_no_handle, 0);
-          i32 i = get_item_pos_for_id(item_id);
-          items[i].active = false;
-          items[i].in_inventory = true;
-          add_inventory_item(items[i]);
+          render_message("Probably shouldn't move the spade because of the ingrients on it.");
         }
         else
         {
-          render_message("The door won't budge.");
+          if(game.first_door_spade_inserted)
+          {
+            render_message("You try to open the door using the spade as leverage..\n  The spade falls out since there's nothing actually holding it in place.\n  You pick it back up.");
+            game.first_door_spade_inserted = false;
+            
+            i32 item_id = add_item(0, 0, item_metal_spade_no_handle, 0);
+            i32 i = get_item_pos_for_id(item_id);
+            items[i].active = false;
+            items[i].in_inventory = true;
+            add_inventory_item(items[i]);
+          }
+          else
+          {
+            render_message("The door won't budge.");
+          }
         }
       }
     }
-    
+    else if(room[x][y] == glyph_wooden_door)
+    {
+      if(game.second_door_key_inserted)
+      {
+        render_message("You twist the bronze key in the lock..\n  The door becomes unlocked and you open it.");
+        room[23][4] = glyph_wooden_door_open;
+        
+        game.second_door_open = true;
+      }
+      else
+      {
+        render_message("You try pushing the door as hard as you can..\n  It won't budge.");
+      }
+    }
+
     return;
   }
-  else if(room[x][y] == glyph_wooden_door)
-  {
-    if(game.second_door_key_inserted)
-    {
-      render_message("You twist the bronze key in the lock..\n  The door becomes unlocked and you open it.");
-      room[23][4] = glyph_wooden_door_open;
-      
-      game.second_door_open = true;
-    }
-    else
-    {
-      render_message("The door won't budge.");
-    }
-    
-    return;
-  }
-  
+
   switch(room[x][y])
   {
     case glyph_bookshelf: render_message("You search the bookshelf..\n  you find nothing useful."); break;
@@ -2042,68 +2077,63 @@ update_input()
 internal void
 render_ui()
 {
-#if REBIRTH_SLOW
-  mvprintw(11, 0, "Turn: %d", player.turn);
-  
-  mvprintw(12, 0, "x: %d", player.x);
-  mvprintw(13, 0, "y: %d", player.y);
-  
-  i32 debug_x = 0;
-  i32 debug_y = 22;
-  
-  mvprintw(debug_y, debug_x, "player x: %d\n", player.x);
-  mvprintw(debug_y + 1, debug_x, "player y: %d\n", player.y);
-  
-  for(i32 i = 0; i < ITEM_COUNT; i++)
-  {
-    mvprintw(debug_y + 3, debug_x, "active %d\n", items[i].active);
-    mvprintw(debug_y + 4, debug_x, "type %d\n", items[i].type);
-    mvprintw(debug_y + 5, debug_x, "in_inventory %d\n", items[i].in_inventory);
-    mvprintw(debug_y + 6, debug_x, "name %s\n", items[i].name);
-    mvprintw(debug_y + 7, debug_x, "id %d\n", items[i].id);
-    mvprintw(debug_y + 8, debug_x, "x %d\n", items[i].x);
-    mvprintw(debug_y + 9, debug_x, "y %d\n", items[i].y);
-    mvprintw(debug_y + 10, debug_x, "glyph %c\n", items[i].glyph);
+  #if REBIRTH_SLOW
+    mvprintw(11, 0, "Turn: %d", player.turn);
     
-    debug_y = debug_y + 9;
-  }
-  
-  debug_y = 22;
-  debug_x = 60;
-  
-  for(i32 i = 0; i < ITEM_COUNT; i++)
-  {
-    mvprintw(debug_y, debug_x, "active %d\n", player.inventory[i].active);
-    mvprintw(debug_y + 1, debug_x, "type %d\n", player.inventory[i].type);
-    mvprintw(debug_y + 2, debug_x, "in_inventory %d\n", player.inventory[i].in_inventory);
-    mvprintw(debug_y + 3, debug_x, "name %s\n", player.inventory[i].name);
-    mvprintw(debug_y + 4, debug_x, "id %d\n", player.inventory[i].id);
-    mvprintw(debug_y + 5, debug_x, "x %d\n", player.inventory[i].x);
-    mvprintw(debug_y + 6, debug_x, "y %d\n", player.inventory[i].y);
-    mvprintw(debug_y + 7, debug_x, "glyph %c\n", player.inventory[i].glyph);
+    mvprintw(12, 0, "x: %d", player.x);
+    mvprintw(13, 0, "y: %d", player.y);
     
-    debug_y = debug_y + 9;
-  }
-  
-  mvprintw(1, 86, "first_door_open: %d", game.first_door_open);
-  mvprintw(2, 86, "first_door_dihydrogen_monoxide_added: %d", game.first_door_dihydrogen_monoxide_added);
-  mvprintw(3, 86, "first_door_cupric_sulfate_added: %d", game.first_door_cupric_sulfate_added);
-  mvprintw(4, 86, "first_door_spade_inserted: %d", game.first_door_spade_inserted);
-  
-  mvprintw(6, 86, "second_door_open: %d", game.second_door_open);
-  mvprintw(7, 86, "second_door_key_pried: %d", game.second_door_key_pried);
-  mvprintw(8, 86, "second_door_key_complete: %d", game.second_door_key_complete);
-  mvprintw(9, 86, "second_door_tin_ore_powder_added: %d", game.second_door_tin_ore_powder_added);
-  mvprintw(10, 86, "second_door_cupric_ore_powder_added: %d", game.second_door_cupric_ore_powder_added);
-  mvprintw(11, 86, "second_door_key_imprint_made: %d", game.second_door_key_imprint_made);
-  mvprintw(12, 86, "second_door_gypsum_added: %d", game.second_door_gypsum_added);
-  mvprintw(13, 86, "second_door_dihydrogen_monoxide_added: %d", game.second_door_dihydrogen_monoxide_added);
-
-  // NOTE(Rami):
-  i32 i = get_inventory_position_for_item_type(item_bunsen_burner);
-  mvprintw(13, 60, "item.use_count: %d", player.inventory[i].use_count);
-  mvprintw(14, 60, "item.max_use_count: %d", player.inventory[i].max_use_count);
-#endif
+    i32 debug_x = 0;
+    i32 debug_y = 22;
+    
+    mvprintw(debug_y, debug_x, "player x: %d\n", player.x);
+    mvprintw(debug_y + 1, debug_x, "player y: %d\n", player.y);
+    
+    for(i32 i = 0; i < ITEM_COUNT; i++)
+    {
+      mvprintw(debug_y + 3, debug_x, "active %d\n", items[i].active);
+      mvprintw(debug_y + 4, debug_x, "type %d\n", items[i].type);
+      mvprintw(debug_y + 5, debug_x, "in_inventory %d\n", items[i].in_inventory);
+      mvprintw(debug_y + 6, debug_x, "name %s\n", items[i].name);
+      mvprintw(debug_y + 7, debug_x, "id %d\n", items[i].id);
+      mvprintw(debug_y + 8, debug_x, "x %d\n", items[i].x);
+      mvprintw(debug_y + 9, debug_x, "y %d\n", items[i].y);
+      mvprintw(debug_y + 10, debug_x, "glyph %c\n", items[i].glyph);
+      
+      debug_y = debug_y + 9;
+    }
+    
+    debug_y = 22;
+    debug_x = 60;
+    
+    for(i32 i = 0; i < ITEM_COUNT; i++)
+    {
+      mvprintw(debug_y, debug_x, "active %d\n", player.inventory[i].active);
+      mvprintw(debug_y + 1, debug_x, "type %d\n", player.inventory[i].type);
+      mvprintw(debug_y + 2, debug_x, "in_inventory %d\n", player.inventory[i].in_inventory);
+      mvprintw(debug_y + 3, debug_x, "name %s\n", player.inventory[i].name);
+      mvprintw(debug_y + 4, debug_x, "id %d\n", player.inventory[i].id);
+      mvprintw(debug_y + 5, debug_x, "x %d\n", player.inventory[i].x);
+      mvprintw(debug_y + 6, debug_x, "y %d\n", player.inventory[i].y);
+      mvprintw(debug_y + 7, debug_x, "glyph %c\n", player.inventory[i].glyph);
+      
+      debug_y = debug_y + 9;
+    }
+    
+    mvprintw(1, 86, "first_door_open: %d", game.first_door_open);
+    mvprintw(2, 86, "first_door_dihydrogen_monoxide_added: %d", game.first_door_dihydrogen_monoxide_added);
+    mvprintw(3, 86, "first_door_cupric_sulfate_added: %d", game.first_door_cupric_sulfate_added);
+    mvprintw(4, 86, "first_door_spade_inserted: %d", game.first_door_spade_inserted);
+    
+    mvprintw(6, 86, "second_door_open: %d", game.second_door_open);
+    mvprintw(7, 86, "second_door_key_pried: %d", game.second_door_key_pried);
+    mvprintw(8, 86, "second_door_key_complete: %d", game.second_door_key_complete);
+    mvprintw(9, 86, "second_door_tin_ore_powder_added: %d", game.second_door_tin_ore_powder_added);
+    mvprintw(10, 86, "second_door_cupric_ore_powder_added: %d", game.second_door_cupric_ore_powder_added);
+    mvprintw(11, 86, "second_door_key_imprint_made: %d", game.second_door_key_imprint_made);
+    mvprintw(12, 86, "second_door_gypsum_added: %d", game.second_door_gypsum_added);
+    mvprintw(13, 86, "second_door_dihydrogen_monoxide_added: %d", game.second_door_dihydrogen_monoxide_added);
+  #endif
 }
 
 internal void
@@ -2206,7 +2236,7 @@ controls()
   mvprintw(22, 10, "P: pickup item");
   
   mvprintw(24, 10, "B: toggle inventory");
-  mvprintw(25, 10, "C: choose two inventory items to be combined");
+  mvprintw(25, 10, "C: in inventory choose two items to be combined");
   
   mvprintw(27, 10, "Q: quit back to main menu");
   
