@@ -179,6 +179,8 @@ typedef struct
   i32 id;
   i32 x;
   i32 y;
+  i32 use_count;
+  i32 max_use_count;
   char glyph;
 } item_t;
 
@@ -218,6 +220,23 @@ global player_t player;
 global u8 room[ROOM_WIDTH][ROOM_HEIGHT];
 global item_t items[ITEM_COUNT];
 global searchable_t searchables[SEARCHABLE_COUNT];
+
+internal i32
+get_inventory_position_for_item_type(item_e type)
+{
+  i32 result = -1;
+
+  for(i32 i = 0; i < ITEM_COUNT; i++)
+  {
+    if(player.inventory[i].type == type)
+    {
+      result = i;
+      break;
+    }
+  }
+
+  return result;
+}
 
 internal i32
 exit_game()
@@ -361,7 +380,7 @@ add_searchable(i32 x, i32 y, item_e item_one, item_e item_two, item_e item_three
 }
 
 internal i32
-add_item(i32 x, i32 y, item_e type)
+add_item(i32 x, i32 y, item_e type, i32 max_use_count)
 {
   i32 result = -1;
   
@@ -376,6 +395,8 @@ add_item(i32 x, i32 y, item_e type)
       items[i].id = get_next_free_item_id();
       items[i].x = x;
       items[i].y = y;
+      items[i].use_count = 0;
+      items[i].max_use_count = max_use_count;
       items[i].glyph = get_item_glyph_for_item_type(type);
       result = items[i].id;
       break;
@@ -485,9 +506,9 @@ init_game_data()
   
   // Items
   memset(&items, 0, sizeof(items));
-  add_item(13, 4, item_metal_spade);
-  add_item(12, 5, item_bunsen_burner);
-  add_item(10, 4, item_empty_vial);
+  add_item(13, 4, item_metal_spade, 0);
+  add_item(12, 5, item_bunsen_burner, 2);
+  add_item(10, 4, item_empty_vial, 0);
   
   // Searchables
   memset(&searchables, 0, sizeof(searchables));
@@ -1011,17 +1032,17 @@ add_searchable_loot(i32 x, i32 y)
         *found_loot_names[i] = glyph_blank;
       }
       
-      for(i32 loot_index = 0; loot_index < LOOT_COUNT; loot_index++)
+      for(i32 loot_i = 0; loot_i < LOOT_COUNT; loot_i++)
       {
-        if(searchables[i].loot[loot_index])
+        if(searchables[i].loot[loot_i])
         {
-          get_item_name_for_item_type(found_loot_names[loot_index], searchables[i].loot[loot_index]);
+          get_item_name_for_item_type(found_loot_names[loot_i], searchables[i].loot[loot_i]);
           
-          i32 item_id = add_item(0, 0, searchables[i].loot[loot_index]);
-          i32 index = get_item_pos_for_id(item_id);
-          items[index].active = false;
-          items[index].in_inventory = true;
-          add_inventory_item(items[index]);
+          i32 item_id = add_item(0, 0, searchables[i].loot[loot_i], 0);
+          i32 i = get_item_pos_for_id(item_id);
+          items[i].active = false;
+          items[i].in_inventory = true;
+          add_inventory_item(items[i]);
         }
       }
       
@@ -1079,10 +1100,9 @@ use_item(i32 x, i32 y)
   
   if(input >= 0 && input <= ITEM_COUNT)
   {
-    if(player.inventory[input - 1].in_inventory)
+    item_t *item = &player.inventory[input - 1];
+    if(item->in_inventory)
     {
-      i32 item_type = get_item_type_for_inventory_position(input);
-      
       if(room[x][y] == glyph_stone_door ||
          room[x][y] == glyph_stone_door_open)
       {
@@ -1096,7 +1116,7 @@ use_item(i32 x, i32 y)
             }
             else
             {
-              if(item_type == item_dihydrogen_monoxide)
+              if(item->type == item_dihydrogen_monoxide)
               {
                 render_message("You pour the dihydrogen monoxide onto the cupric sulfate..\n  There's a reaction, you step back..\n  The spade gets hotter and expands a little.");
                 remove_inventory_item(input);
@@ -1111,7 +1131,7 @@ use_item(i32 x, i32 y)
           }
           else
           {
-            if(item_type == item_cupric_sulfate)
+            if(item->type == item_cupric_sulfate)
             {
               render_message("You pour the cupric sulfate onto the flat part of the spade.");
               remove_inventory_item(input);
@@ -1125,7 +1145,7 @@ use_item(i32 x, i32 y)
         }
         else
         {
-          if(item_type == item_metal_spade_no_handle)
+          if(item->type == item_metal_spade_no_handle)
           {
             render_message("You push the other end of the spade in the hole..\n  It fits quite nicely.");
             remove_inventory_item(input);
@@ -1141,7 +1161,7 @@ use_item(i32 x, i32 y)
       {
         if(game.second_door_key_imprint_made)
         {
-          if(item_type == item_tin)
+          if(item->type == item_tin)
           {
             render_message("You already made an imprint of the key.");
           }
@@ -1152,11 +1172,11 @@ use_item(i32 x, i32 y)
         }
         else
         {
-          if(item_type == item_tin &&
+          if(item->type == item_tin &&
              game.second_door_dihydrogen_monoxide_added &&
              game.second_door_gypsum_added)
           {
-            render_message("You make an impression of the key in the white mixture as it hardens.");
+            render_message("You press the key against the white mixture..\n  It creates an impression of the key and hardens.");
             game.second_door_key_imprint_made = true;
           }
           else
@@ -1173,7 +1193,7 @@ use_item(i32 x, i32 y)
         }
         else
         {
-          if(item_type == item_bronze_key && game.second_door_key_pried)
+          if(item->type == item_bronze_key && game.second_door_key_pried)
           {
             render_message("You insert the duplicate key and twist it..\n  You hear a loud click and the door is unlocked.");
             remove_inventory_item(input);
@@ -1187,10 +1207,18 @@ use_item(i32 x, i32 y)
       }
       else if(room[x][y] == glyph_chair)
       {
-        if(item_type == item_bunsen_burner)
+        if(item->type == item_bunsen_burner)
         {
-          render_message("The chair gets set ablaze..\n  All that remains is a pile of ash.");
-          room[x][y] = glyph_ash;
+          if(item->use_count < item->max_use_count)
+          {
+            render_message("The chair slowly catches fire..\n  All that remains is a pile of wood ash.");
+            room[x][y] = glyph_ash;
+            item->use_count++;
+          }
+          else
+          {
+            render_message("The bunsen burner doesn't seem to create a flame anymore..\n  You try adjusting the valve on the side of it but nothing happens.");
+          }
         }
         else
         {
@@ -1199,7 +1227,7 @@ use_item(i32 x, i32 y)
       }
       else if(room[x][y] == glyph_table)
       {
-        if(item_type == item_bunsen_burner)
+        if(item->type == item_bunsen_burner)
         {
           if(is_item_pos(x, y))
           {
@@ -1207,8 +1235,16 @@ use_item(i32 x, i32 y)
           }
           else
           {
-            render_message("The piece of table gets set ablaze..\n  All that remains is a pile of ash.");
-            room[x][y] = glyph_ash;
+            if(item->use_count < item->max_use_count)
+            {
+              render_message("The piece of table slowly catches fire..\n  All that remains is a pile of wood ash.");
+              room[x][y] = glyph_ash;
+              item->use_count++;
+            }
+            else
+            {
+              render_message("The bunsen burner doesn't seem to create a flame anymore..\n  You try adjusting the valve on the side of it but nothing happens.");
+            }
           }
         }
         else
@@ -1218,11 +1254,20 @@ use_item(i32 x, i32 y)
       }
       else if(room[x][y] == glyph_bookshelf)
       {
-        if(item_type == item_bunsen_burner)
+        if(item->type == item_bunsen_burner)
         {
-          render_message("You don't want to burn that because there might be something of value there.");
+          if(item->use_count < item->max_use_count)
+          {
+            render_message("The bookshelf slowly catches fire..\n  All that remains is a pile of wood ash.");
+            room[x][y] = glyph_ash;
+            item->use_count++;
+          }
+          else
+          {
+            render_message("The bunsen burner doesn't seem to create a flame anymore..\n  You try adjusting the valve on the side of it but nothing happens.");
+          }
         }
-        else 
+        else
         {
           render_message("Nothing interesting happens.");
         }
@@ -1230,9 +1275,26 @@ use_item(i32 x, i32 y)
       else if(room[x][y] == glyph_small_crate ||
               room[x][y] == glyph_crate)
       {
-        if(item_type == item_bunsen_burner)
+        if(item->type == item_bunsen_burner)
         {
-          render_message("You don't want to burn that because there might be something of value there.");
+          if(item->use_count < item->max_use_count)
+          {
+            if(room[x][y] == glyph_small_crate)
+            {
+              render_message("The small crate slowly catches fire..\n  All that remains is a pile of wood ash.");
+            }
+            else
+            {
+              render_message("The crate slowly catches fire..\n  All that remains is a pile of wood ash.");
+            }
+
+            room[x][y] = glyph_ash;
+            item->use_count++;
+          }
+          else
+          {
+            render_message("The bunsen burner doesn't seem to create a flame anymore..\n  You try adjusting the valve on the side of it but nothing happens.");
+          }
         }
         else
         {
@@ -1241,10 +1303,18 @@ use_item(i32 x, i32 y)
       }
       else if(room[x][y] == glyph_open_chest)
       {
-        if(item_type == item_bunsen_burner)
+        if(item->type == item_bunsen_burner)
         {
-          render_message("The chest gets set ablaze..\n  All that remains is a pile of ash.");
-          room[x][y] = glyph_ash;
+          if(item->use_count < item->max_use_count)
+          {
+            render_message("The chest slowly catches fire..\n  All that remains is a pile of wood ash.");
+            room[x][y] = glyph_ash;
+            item->use_count++;
+          }
+          else
+          {
+            render_message("The bunsen burner doesn't seem to create a flame anymore..\n  You try adjusting the valve on the side of it but nothing happens.");
+          }
         }
         else
         {
@@ -1270,13 +1340,13 @@ use_item(i32 x, i32 y)
 internal void
 interact(i32 x, i32 y)
 {
-  i32 result = is_searchable(x, y);
-  if(result == 1)
+  i32 searchable = is_searchable(x, y);
+  if(searchable == 1)
   {
     add_searchable_loot(x, y);
     return;
   }
-  else if(result == 0)
+  else if(searchable == 0)
   {
     switch(room[x][y])
     {
@@ -1313,11 +1383,11 @@ interact(i32 x, i32 y)
           render_message("You try to open the door using the spade as leverage..\n  The spade falls out since there's nothing actually holding it in place.\n  You pick it back up.");
           game.first_door_spade_inserted = false;
           
-          i32 item_id = add_item(0, 0, item_metal_spade_no_handle);
-          i32 index = get_item_pos_for_id(item_id);
-          items[index].active = false;
-          items[index].in_inventory = true;
-          add_inventory_item(items[index]);
+          i32 item_id = add_item(0, 0, item_metal_spade_no_handle, 0);
+          i32 i = get_item_pos_for_id(item_id);
+          items[i].active = false;
+          items[i].in_inventory = true;
+          add_inventory_item(items[i]);
         }
         else
         {
@@ -1352,7 +1422,6 @@ interact(i32 x, i32 y)
     case glyph_small_crate: render_message("You search the small crate..\n  you find nothing useful."); break;
     case glyph_open_chest: render_message("There's nothing in there."); break;
     case glyph_table: render_message("You look under the table..\n  nothing but small rocks and dust."); break;
-    case glyph_chair: render_message("Just an ordinary chair, except it looks old as hell and beat up."); break;
     case glyph_chain: render_message("You don't see a way of getting the key because of the chain."); break;
     case glyph_stone_door_open: render_message("You already opened it."); break;
     case glyph_wooden_door_open: render_message("You already opened it."); break;
@@ -1477,7 +1546,7 @@ inspect(i32 x, i32 y)
     case glyph_chain: render_message("A stone surface with a big chain hanging from it all the way down to the ground..\n  There's a bronze key at the end of the chain."); break;
     case glyph_stone_door_open: render_message("It's the stone door but it's wide open this time."); break;
     case glyph_wooden_door_open: render_message("It's the wooden door but it's wide open this time."); break;
-    case glyph_ash: render_message("Some ashes on the floor."); break;
+    case glyph_ash: render_message("There's wood ash scattered on the floor."); break;
     case glyph_wooden_door:
     {
       if(game.second_door_key_inserted)
@@ -1547,11 +1616,14 @@ combine(item_e first_type, item_e second_type)
       remove_inventory_item(player.inventory_second_combination_item_num);
     }
     
-    i32 item_id = add_item(0, 0, item_metal_spade_no_handle);
-    i32 index = get_item_pos_for_id(item_id);
-    items[index].active = false;
-    items[index].in_inventory = true;
-    add_inventory_item(items[index]);
+    i32 item_id = add_item(0, 0, item_metal_spade_no_handle, 0);
+    i32 i = get_item_pos_for_id(item_id);
+    items[i].active = false;
+    items[i].in_inventory = true;
+    add_inventory_item(items[i]);
+
+    i = get_inventory_position_for_item_type(item_bunsen_burner);
+    player.inventory[i].use_count++;
   }
   else if((first_type == item_tin && second_type == item_dihydrogen_monoxide) ||
           (first_type == item_dihydrogen_monoxide && second_type == item_tin))
@@ -1656,7 +1728,11 @@ combine(item_e first_type, item_e second_type)
     if(game.second_door_cupric_ore_powder_added &&
        game.second_door_tin_ore_powder_added)
     {
-      render_message("You heat the two powdered ores together in the tin..\n  You make a duplicate of the key in bronze.\n  Now you need to pry it out of the tin somehow.");
+      render_message("You heat the two powdered ores together in the tin..\n  You make a duplicate of the key in bronze.");
+
+      i32 i = get_inventory_position_for_item_type(item_bunsen_burner);
+      player.inventory[i].use_count++;
+
       game.second_door_key_complete = true;
     }
     else
@@ -1671,12 +1747,12 @@ combine(item_e first_type, item_e second_type)
     {
       render_message("You pry the duplicate bronze key out of the tin.");
       
-      i32 item_id = add_item(0, 0, item_bronze_key);
-      i32 index = get_item_pos_for_id(item_id);
-      items[index].active = false;
-      items[index].in_inventory = true;
-      add_inventory_item(items[index]);
-      
+      i32 item_id = add_item(0, 0, item_bronze_key, 0);
+      i32 i = get_item_pos_for_id(item_id);
+      items[i].active = false;
+      items[i].in_inventory = true;
+      add_inventory_item(items[i]);
+
       game.second_door_key_pried = true;
     }
     else
@@ -2022,6 +2098,11 @@ render_ui()
   mvprintw(11, 86, "second_door_key_imprint_made: %d", game.second_door_key_imprint_made);
   mvprintw(12, 86, "second_door_gypsum_added: %d", game.second_door_gypsum_added);
   mvprintw(13, 86, "second_door_dihydrogen_monoxide_added: %d", game.second_door_dihydrogen_monoxide_added);
+
+  // NOTE(Rami):
+  i32 i = get_inventory_position_for_item_type(item_bunsen_burner);
+  mvprintw(13, 60, "item.use_count: %d", player.inventory[i].use_count);
+  mvprintw(14, 60, "item.max_use_count: %d", player.inventory[i].max_use_count);
 #endif
 }
 
@@ -2152,18 +2233,20 @@ intro()
     
     if(paragraphs == 1)
     {
-      mvprintw(5, 10, "You awake, eyes wide open staring infont of you, not sure if in a");
-      mvprintw(6, 10, "dream or not. After glancing around you realise you're on the floor of");
-      mvprintw(7, 10, "some room. You try to reminisce why you are here or who you are but");
-      mvprintw(8, 10, "nothing comes to mind. It's almost like your brain doesn't allow you");
-      mvprintw(9, 10, "to remember.");
+      mvprintw(5, 10, "You awake and open your eyes wide staring infont of you, not sure if in a");
+      mvprintw(6, 10, "dream or not. As you look around the room which is barely illuminated by");
+      mvprintw(7, 10, "torches you try to get to your feet. It takes you a second since your bo-");
+      mvprintw(8, 10, "dy feels cold and worn. You refocus your eyes and take a deeper glance at.");
+      mvprintw(9, 10, "your surroundings. The room is filled with various things like a table,");
+      mvprintw(10, 10, "bookshelves, chairs and more.");
     }
-    
+  
     if(paragraphs == 2)
     {
-      mvprintw(11, 10, "You seem to be wearing some slightly tattered and worn clotches. There");
-      mvprintw(12, 10, "doesn't to be anything valuable on you at the moment either. At least");
-      mvprintw(13, 10, "you are feeling well-rested for now.");
+      mvprintw(12, 10, "Your focus quickly changes to yourself, you seem to be wearing tattered");
+      mvprintw(13, 10, "clotches and it seems like you're not carrying anything of use. You try");
+      mvprintw(14, 10, "to reminisce who you are and why you are here but nothing comes to mind.");
+      mvprintw(15, 10, "It's almost like your brain doesn't allow you to remember.");
     }
     
     i32 input = getch();
