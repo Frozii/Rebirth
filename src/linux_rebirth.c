@@ -737,28 +737,21 @@ render_message(char *msg, ...)
 }
 
 internal void
-remove_inventory_item(i32 selected)
+remove_inventory_item(i32 i)
 {
-  i32 id_to_remove = player.inventory[selected - 1].id;
+  i32 id_to_remove = player.inventory[i - 1].id;
   
   // Remove item from game
   for(i32 i = 0; i < ITEM_COUNT; i++)
   {
     if(items[i].id == id_to_remove)
     {
-      items[i].active = false;
-      items[i].in_inventory = false;
-      items[i].type = item_none;
-      memset(&items[i].name, 0, GENERAL_LENGTH - 1);
-      items[i].id = 0;
-      items[i].x = 0;
-      items[i].y = 0;
-      items[i].glyph = glyph_blank;
+      memset(&items[i], 0, sizeof(item_t));
       break;
     }
   }
   
-  // Reorder data
+  // Reorder game data
   for(i32 i = 1; i < ITEM_COUNT; i++)
   {
     if(items[i].active || items[i].in_inventory)
@@ -766,30 +759,15 @@ remove_inventory_item(i32 selected)
       if(!items[i - 1].active && !items[i - 1].in_inventory)
       {
         items[i - 1] = items[i];
-        
-        items[i].active = false;
-        items[i].in_inventory = false;
-        items[i].type = item_none;
-        memset(&items[i].name, 0, GENERAL_LENGTH - 1);
-        items[i].id = 0;
-        items[i].x = 0;
-        items[i].y = 0;
-        items[i].glyph = glyph_blank;
+        memset(&items[i], 0, sizeof(item_t));
       }
     }
   }
   
   // Remove item from inventory
-  player.inventory[selected - 1].active = false;
-  player.inventory[selected - 1].in_inventory = false;
-  player.inventory[selected - 1].type = item_none;
-  memset(&player.inventory[selected - 1], 0, GENERAL_LENGTH - 1);
-  player.inventory[selected - 1].id = 0;
-  player.inventory[selected - 1].x = 0;
-  player.inventory[selected - 1].y = 0;
-  player.inventory[selected - 1].glyph = glyph_blank;
+  memset(&player.inventory[i - 1], 0, sizeof(item_t));
   
-  // Reorder data
+  // Reorder inventory data
   for(i32 i = 1; i < ITEM_COUNT; i++)
   {
     if(player.inventory[i].in_inventory)
@@ -797,15 +775,7 @@ remove_inventory_item(i32 selected)
       if(!player.inventory[i - 1].in_inventory)
       {
         player.inventory[i - 1] = player.inventory[i];
-        
-        player.inventory[i].active = false;
-        player.inventory[i].in_inventory = false;
-        player.inventory[i].type = item_none;
-        memset(&player.inventory[i].name, 0, GENERAL_LENGTH - 1);
-        player.inventory[i].id = 0;
-        player.inventory[i].x = 0;
-        player.inventory[i].y = 0;
-        player.inventory[i].glyph = glyph_blank;
+        memset(&player.inventory[i], 0, sizeof(item_t));
       }
     }
   }
@@ -1460,6 +1430,7 @@ interact(i32 x, i32 y)
     case glyph_chain: render_message("You don't see a way of getting the key because of the chain."); break;
     case glyph_stone_door_open: render_message("You already opened it."); break;
     case glyph_wooden_door_open: render_message("You already opened it."); break;
+    case glyph_chair: render_message("You contemplate sitting on it but you're not sure if it would break."); break;
     default: render_message("You don't see anything to do here.");
   }
 }
@@ -1659,6 +1630,11 @@ combine(item_e first_type, item_e second_type)
 
     i = get_inventory_position_for_item_type(item_bunsen_burner);
     player.inventory[i].use_count++;
+  }
+  else if((first_type == item_metal_spade_no_handle && second_type == item_bunsen_burner) ||
+     (first_type == item_bunsen_burner && second_type == item_metal_spade_no_handle))
+  {
+    render_message("There's no wood left to burn on the metal spade.");
   }
   else if((first_type == item_tin && second_type == item_dihydrogen_monoxide) ||
           (first_type == item_dihydrogen_monoxide && second_type == item_tin))
